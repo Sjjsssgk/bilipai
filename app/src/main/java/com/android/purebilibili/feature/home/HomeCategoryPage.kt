@@ -26,10 +26,12 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.android.purebilibili.core.store.SettingsManager
@@ -43,6 +45,7 @@ import com.android.purebilibili.core.ui.components.UpBadgeName
 import com.android.purebilibili.core.util.responsiveContentWidth
 import com.android.purebilibili.data.model.response.VideoItem
 import com.android.purebilibili.feature.home.components.BottomBarLiquidSegmentedControl
+import com.android.purebilibili.feature.home.components.HomeUiSkinDecoration
 import com.android.purebilibili.feature.home.components.cards.ElegantVideoCard
 import com.android.purebilibili.feature.home.components.cards.LiveRoomCard
 import com.android.purebilibili.feature.home.components.cards.StoryVideoCard
@@ -50,6 +53,7 @@ import com.android.purebilibili.feature.home.components.cards.StoryVideoCard
 import io.github.alexzhirkevich.cupertino.CupertinoActivityIndicator
 import androidx.compose.ui.Alignment
 import coil.compose.AsyncImage
+import java.io.File
 import kotlinx.coroutines.yield
 
 internal fun resolveHomeCategoryVideoGridKey(
@@ -78,6 +82,14 @@ internal fun shouldRequestHomeCategoryLoadMore(
         lastVisibleItemIndex >= totalItems - 4 &&
         !isLoading &&
         hasMore
+}
+
+internal fun resolveHomeFeedSkinAtmosphereImagePath(
+    decoration: HomeUiSkinDecoration?
+): String? {
+    return decoration?.sideBackgroundImagePath
+        ?: decoration?.profileSquaredBackgroundImagePath
+        ?: decoration?.profileBackgroundImagePath
 }
 
 @Composable
@@ -135,6 +147,7 @@ internal fun HomeCategoryPageContent(
         )
     },
     firstGridItemModifier: Modifier = Modifier,
+    uiSkinDecoration: HomeUiSkinDecoration? = null,
     modifier: Modifier = Modifier,
 ) {
     val scrollLiteModeEnabled = false
@@ -171,14 +184,27 @@ internal fun HomeCategoryPageContent(
         if (shouldLoadMore) onLoadMore()
     }
 
-    LazyVerticalGrid(
-        state = gridState,
-        columns = GridCells.Fixed(gridColumns),
-        contentPadding = contentPadding,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = modifier
-    ) {
+    val feedAtmosphereImagePath = resolveHomeFeedSkinAtmosphereImagePath(uiSkinDecoration)
+    Box(modifier = modifier) {
+        if (!feedAtmosphereImagePath.isNullOrBlank()) {
+            AsyncImage(
+                model = File(feedAtmosphereImagePath),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .matchParentSize()
+                    .alpha(0.16f)
+                    .clearAndSetSemantics {}
+            )
+        }
+        LazyVerticalGrid(
+            state = gridState,
+            columns = GridCells.Fixed(gridColumns),
+            contentPadding = contentPadding,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.fillMaxSize()
+        ) {
         if (category == HomeCategory.LIVE) {
             // Live Category Content
             
@@ -415,6 +441,7 @@ internal fun HomeCategoryPageContent(
         // Spacer
         item(span = { GridItemSpan(gridColumns) }) {
             Box(modifier = Modifier.fillMaxWidth().height(20.dp))
+        }
         }
     }
 }

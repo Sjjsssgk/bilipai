@@ -1902,7 +1902,9 @@ fun iOSHomeHeader(
                 forceLowBlurBudget = forceLowBlurBudget,
                 isViewportSyncEnabled = isTopTabViewportSyncEnabled,
                 skinPlainStyle = shouldUseSkinPlainTopTabs,
-                skinPlainContentColor = skinPlainTopTabContentColor
+                skinPlainContentColor = skinPlainTopTabContentColor,
+                topTabSkinIconPaths = uiSkinDecoration?.topTabSkinIconPaths.orEmpty(),
+                partitionSkinIconPath = uiSkinDecoration?.topTabPartitionIconPath()
             )
         }
     }

@@ -1419,6 +1419,7 @@ fun HomeScreen(
                                      popularSubCategory = state.popularSubCategory,
                                      onPopularSubCategoryChange = onPopularSubCategoryChange,
                                      onTodayWatchVideoClick = onTodayWatchVideoClick,
+                                     uiSkinDecoration = homeUiSkinDecoration,
                                      firstGridItemModifier = Modifier
                                  )
                              }

@@ -208,7 +208,18 @@ class BottomBarUiSkinDecorationTest {
                     homeTopTabBackground = "assets/head_tab_bg.jpg",
                     homeSideBackground = "assets/side_bg.jpg",
                     homeProfileBackground = "assets/head_myself_bg.jpg",
-                    homeProfileSquaredBackground = "assets/head_myself_squared_bg.jpg"
+                    homeProfileSquaredBackground = "assets/head_myself_squared_bg.jpg",
+                    homeChannelIcon = "assets/tail_icon_channel.png",
+                    homeChannelSelectedIcon = "assets/tail_icon_selected_channel.png",
+                    bottomBarIcons = mapOf(
+                        "home" to "assets/tail_icon_main.png",
+                        "home_selected" to "assets/tail_icon_selected_main.png",
+                        "following" to "assets/tail_icon_dynamic.png",
+                        "following_selected" to "assets/tail_icon_selected_dynamic.png",
+                        "member" to "assets/tail_icon_shop.png",
+                        "member_selected" to "assets/tail_icon_selected_shop.png",
+                        "profile" to "assets/tail_icon_myself.png"
+                    )
                 ),
                 colors = UiSkinColorTokens(
                     topAtmosphereTint = "#DFF5FF",
@@ -223,7 +234,16 @@ class BottomBarUiSkinDecorationTest {
                 "assets/head_tab_bg.jpg" to "/tmp/head_tab_bg.jpg",
                 "assets/side_bg.jpg" to "/tmp/side_bg.jpg",
                 "assets/head_myself_bg.jpg" to "/tmp/head_myself_bg.jpg",
-                "assets/head_myself_squared_bg.jpg" to "/tmp/head_myself_squared_bg.jpg"
+                "assets/head_myself_squared_bg.jpg" to "/tmp/head_myself_squared_bg.jpg",
+                "assets/tail_icon_channel.png" to "/tmp/tail_icon_channel.png",
+                "assets/tail_icon_selected_channel.png" to "/tmp/tail_icon_selected_channel.png",
+                "assets/tail_icon_main.png" to "/tmp/tail_icon_main.png",
+                "assets/tail_icon_selected_main.png" to "/tmp/tail_icon_selected_main.png",
+                "assets/tail_icon_dynamic.png" to "/tmp/tail_icon_dynamic.png",
+                "assets/tail_icon_selected_dynamic.png" to "/tmp/tail_icon_selected_dynamic.png",
+                "assets/tail_icon_shop.png" to "/tmp/tail_icon_shop.png",
+                "assets/tail_icon_selected_shop.png" to "/tmp/tail_icon_selected_shop.png",
+                "assets/tail_icon_myself.png" to "/tmp/tail_icon_myself.png"
             )
         )
 
@@ -237,6 +257,12 @@ class BottomBarUiSkinDecorationTest {
         assertEquals("/tmp/side_bg.jpg", decoration?.sideBackgroundImagePath)
         assertEquals("/tmp/head_myself_bg.jpg", decoration?.profileBackgroundImagePath)
         assertEquals("/tmp/head_myself_squared_bg.jpg", decoration?.profileSquaredBackgroundImagePath)
+        assertEquals("/tmp/tail_icon_main.png", decoration?.topTabIconPathFor("RECOMMEND"))
+        assertEquals("/tmp/tail_icon_selected_main.png", decoration?.topTabIconPathFor("RECOMMEND", selected = true))
+        assertEquals("/tmp/tail_icon_dynamic.png", decoration?.topTabIconPathFor("FOLLOW"))
+        assertEquals("/tmp/tail_icon_channel.png", decoration?.topTabIconPathFor("POPULAR"))
+        assertEquals("/tmp/tail_icon_channel.png", decoration?.topTabPartitionIconPath())
+        assertEquals("/tmp/tail_icon_selected_channel.png", decoration?.topTabPartitionIconPath(selected = true))
     }
 
     @Test

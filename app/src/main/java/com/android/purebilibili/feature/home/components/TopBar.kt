@@ -50,6 +50,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.font.FontWeight
@@ -88,6 +89,7 @@ import androidx.compose.foundation.combinedClickable // [Added]
 import top.yukonga.miuix.kmp.basic.TabRowDefaults as MiuixTabRowDefaults
 import top.yukonga.miuix.kmp.basic.TabRowWithContour as MiuixTabRowWithContour
 import top.yukonga.miuix.kmp.theme.MiuixTheme
+import java.io.File
 
 internal fun resolveFloatingIndicatorStartPaddingPx(
     baseInsetPx: Float,
@@ -555,7 +557,9 @@ private fun LightweightHomeTopTabs(
     isFloatingStyle: Boolean,
     edgeToEdge: Boolean,
     skinPlainStyle: Boolean = false,
-    skinPlainContentColor: Color? = null
+    skinPlainContentColor: Color? = null,
+    topTabSkinIconPaths: Map<String, TopTabSkinIconPaths> = emptyMap(),
+    partitionSkinIconPath: String? = null
 ) {
     val uiPreset = LocalUiPreset.current
     val haptic = com.android.purebilibili.core.util.rememberHapticFeedback()
@@ -710,6 +714,7 @@ private fun LightweightHomeTopTabs(
                             itemWidth = itemWidth,
                             skinPlainStyle = skinPlainStyle,
                             skinPlainContentColor = skinPlainContentColor,
+                            skinIconPaths = topTabSkinIconPaths[categoryKey.trim().uppercase()],
                             onClick = {
                                 performHomeTopBarTap(haptic = haptic, onClick = {
                                     when (resolveTopTabClickAction(index, selectedIndex)) {
@@ -768,12 +773,21 @@ private fun LightweightHomeTopTabs(
                     },
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    resolveTopTabPartitionIcon(uiPreset),
-                    contentDescription = "浏览全部分区",
-                    tint = skinPlainContentColor ?: MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(actionIconSize)
-                )
+                if (!partitionSkinIconPath.isNullOrBlank()) {
+                    AsyncImage(
+                        model = File(partitionSkinIconPath),
+                        contentDescription = "浏览全部分区",
+                        contentScale = ContentScale.Fit,
+                        modifier = Modifier.size(actionIconSize)
+                    )
+                } else {
+                    Icon(
+                        resolveTopTabPartitionIcon(uiPreset),
+                        contentDescription = "浏览全部分区",
+                        tint = skinPlainContentColor ?: MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(actionIconSize)
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.width(6.dp))
@@ -794,12 +808,14 @@ private fun LightweightTopTabItem(
     itemWidth: Dp,
     skinPlainStyle: Boolean = false,
     skinPlainContentColor: Color? = null,
+    skinIconPaths: TopTabSkinIconPaths? = null,
     onClick: () -> Unit
 ) {
     val uiPreset = LocalUiPreset.current
     val colorScheme = MaterialTheme.colorScheme
-    val icon = resolveTopTabCategoryIcon(categoryKey, uiPreset)
     val selected = selectionFraction > 0.5f || index == selectedIndex
+    val skinIconPath = skinIconPaths?.pathFor(selected)
+    val icon = resolveTopTabCategoryIcon(categoryKey, uiPreset)
     val selectedColor = when (renderer) {
         HomeTopTabRenderer.IOS -> if (skinPlainStyle) {
             skinPlainContentColor ?: colorScheme.onSurface
@@ -862,12 +878,21 @@ private fun LightweightTopTabItem(
             verticalArrangement = Arrangement.Center
         ) {
             if (showIcon) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = contentColor,
-                    modifier = Modifier.size(resolveTopTabIconSizeDp(if (showText) 0 else 1).dp)
-                )
+                if (!skinIconPath.isNullOrBlank()) {
+                    AsyncImage(
+                        model = File(skinIconPath),
+                        contentDescription = null,
+                        contentScale = ContentScale.Fit,
+                        modifier = Modifier.size(resolveTopTabIconSizeDp(if (showText) 0 else 1).dp)
+                    )
+                } else {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = contentColor,
+                        modifier = Modifier.size(resolveTopTabIconSizeDp(if (showText) 0 else 1).dp)
+                    )
+                }
             }
             if (showIcon && showText) {
                 Spacer(modifier = Modifier.height(resolveTopTabIconTextSpacingDp(0).dp))
@@ -912,7 +937,9 @@ fun CategoryTabRow(
     forceLowBlurBudget: Boolean = false,
     isViewportSyncEnabled: Boolean = true,
     skinPlainStyle: Boolean = false,
-    skinPlainContentColor: Color? = null
+    skinPlainContentColor: Color? = null,
+    topTabSkinIconPaths: Map<String, TopTabSkinIconPaths> = emptyMap(),
+    partitionSkinIconPath: String? = null
 ) {
     val presetStyle = resolveHomeTopPresetStyle(
         uiPreset = LocalUiPreset.current,
@@ -946,7 +973,9 @@ fun CategoryTabRow(
         isFloatingStyle = isFloatingStyle,
         edgeToEdge = edgeToEdge,
         skinPlainStyle = skinPlainStyle,
-        skinPlainContentColor = skinPlainContentColor
+        skinPlainContentColor = skinPlainContentColor,
+        topTabSkinIconPaths = topTabSkinIconPaths,
+        partitionSkinIconPath = partitionSkinIconPath
     )
 }
 

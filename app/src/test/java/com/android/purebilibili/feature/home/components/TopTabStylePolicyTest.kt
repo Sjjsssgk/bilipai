@@ -658,6 +658,26 @@ class TopTabStylePolicyTest {
     }
 
     @Test
+    fun `skin top tabs render sticker image before host vector icon fallback`() {
+        val source = sourceText("src/main/java/com/android/purebilibili/feature/home/components/TopBar.kt")
+        val rowCallSource = source
+            .substringAfter("LightweightHomeTopTabs(")
+            .substringBefore("private fun MiuixCategoryTabRow(")
+        val itemSource = source
+            .substringAfter("private fun LightweightTopTabItem(")
+            .substringBefore("@OptIn(ExperimentalMaterial3Api::class)")
+
+        assertTrue(rowCallSource.contains("topTabSkinIconPaths = topTabSkinIconPaths"))
+        assertTrue(rowCallSource.contains("partitionSkinIconPath = partitionSkinIconPath"))
+        assertTrue(itemSource.contains("skinIconPath"))
+        assertTrue(itemSource.contains("AsyncImage("))
+        assertTrue(itemSource.contains("model = File(skinIconPath)"))
+        assertTrue(itemSource.indexOf("AsyncImage(") < itemSource.indexOf("imageVector = icon"))
+        assertTrue(itemSource.contains("else {"))
+        assertTrue(itemSource.contains("resolveTopTabCategoryIcon(categoryKey, uiPreset)"))
+    }
+
+    @Test
     fun `android native miuix top tabs should slightly enlarge action button chrome`() {
         assertEquals(
             18.dp,
