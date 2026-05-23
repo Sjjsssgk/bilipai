@@ -93,7 +93,10 @@ class AudioModeViewModelOwnerPolicyTest {
     fun `audio mode skips initial load when state already exists`() {
         assertNull(
             resolveAudioModeInitialLoadRequest(
-                key = BiliPaiNavKey.AudioMode(sourceBvid = "BV1audio"),
+                key = BiliPaiNavKey.AudioMode(
+                    sourceBvid = "BV1audio",
+                    sourceCid = 123L
+                ),
                 hasDisplayState = true
             )
         )

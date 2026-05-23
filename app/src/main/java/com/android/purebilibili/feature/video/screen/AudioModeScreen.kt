@@ -13,7 +13,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.VerticalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -60,6 +60,7 @@ import com.android.purebilibili.feature.home.components.BottomBarLiquidSegmented
 import com.android.purebilibili.feature.video.ui.components.CoinDialog
 import com.android.purebilibili.feature.video.player.PlayMode
 import com.android.purebilibili.feature.video.player.PlaylistManager
+import com.android.purebilibili.feature.video.state.rememberVideoPlayerState
 import com.android.purebilibili.feature.video.ui.components.CollectionSheet  // 📂 [新增] 合集弹窗
 import com.android.purebilibili.feature.video.viewmodel.PlayerUiState
 import com.android.purebilibili.feature.video.viewmodel.PlayerViewModel
@@ -68,7 +69,6 @@ import io.github.alexzhirkevich.cupertino.icons.filled.*
 import io.github.alexzhirkevich.cupertino.icons.outlined.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
-import kotlin.math.abs
 import kotlin.math.roundToInt
 
 internal fun resolveAudioPlayModeLabel(mode: PlayMode): String {
@@ -105,6 +105,13 @@ internal fun resolveAudioModePlayPauseAction(
         Player.STATE_READY, Player.STATE_BUFFERING -> AudioModePlayPauseAction.RESUME
         else -> if (playWhenReady) AudioModePlayPauseAction.PAUSE else AudioModePlayPauseAction.RESUME
     }
+}
+
+internal fun shouldCreateAudioModeStandalonePlayer(
+    hasPlayer: Boolean,
+    initialBvid: String
+): Boolean {
+    return !hasPlayer && initialBvid.isNotBlank()
 }
 
 internal fun shouldShowAudioModePipButton(sdkInt: Int): Boolean = sdkInt >= Build.VERSION_CODES.O
@@ -209,9 +216,6 @@ fun AudioModeScreen(
         resolveAudioModeRenderPolicy(isInPipMode = isInPipMode)
     }
     
-    //  通过共享的 ViewModel 获取播放器实例，实现无缝音频播放
-    val player = viewModel.currentPlayer
-    
     //  投币对话框状态
     val coinDialogVisible by viewModel.coinDialogVisible.collectAsState(context = kotlin.coroutines.EmptyCoroutineContext)
     val currentCoinCount = (uiState as? PlayerUiState.Success)?.coinCount ?: 0
@@ -233,8 +237,28 @@ fun AudioModeScreen(
         else -> null
     }
 
-    LaunchedEffect(initialBvid, initialCid, initialResumePositionMs) {
-        if (displayState == null && initialBvid.isNotBlank()) {
+    val shouldCreateStandalonePlayer = remember(initialBvid) {
+        shouldCreateAudioModeStandalonePlayer(
+            hasPlayer = viewModel.currentPlayer != null,
+            initialBvid = initialBvid
+        )
+    }
+    val standalonePlayerState = if (shouldCreateStandalonePlayer) {
+        rememberVideoPlayerState(
+            context = context,
+            viewModel = viewModel,
+            bvid = initialBvid,
+            cid = initialCid,
+            fallbackResumePositionMs = initialResumePositionMs
+        )
+    } else {
+        null
+    }
+    // 通过共享或听视频页自建的 ViewModel player 获取播放控制实例。
+    val player = standalonePlayerState?.player ?: viewModel.currentPlayer
+
+    LaunchedEffect(initialBvid, initialCid, initialResumePositionMs, shouldCreateStandalonePlayer) {
+        if (!shouldCreateStandalonePlayer && displayState == null && initialBvid.isNotBlank()) {
             viewModel.loadVideo(
                 bvid = initialBvid,
                 cid = initialCid,
@@ -545,7 +569,7 @@ fun AudioModeScreen(
                     // 1. 底层：Pager 作为背景，填满全屏
                     Box(modifier = Modifier.fillMaxSize()) {
                         if (playlist.isNotEmpty()) {
-                            HorizontalPager(
+                            VerticalPager(
                                 state = pagerState,
                                 modifier = Modifier.fillMaxSize(),
                                 beyondViewportPageCount = 1,
@@ -650,17 +674,21 @@ fun AudioModeScreen(
                                 availableHeightDp = maxHeight.value.roundToInt()
                             )
                             if (playlist.isNotEmpty()) {
-                                HorizontalPager(
+                                VerticalPager(
                                     state = pagerState,
                                     modifier = Modifier.fillMaxSize(),
-                                    // 关键：不设置 contentPadding，让 Pager 占满宽度，这样旋转时不会在边界被裁剪
-                                    contentPadding = PaddingValues(horizontal = 0.dp),
+                                    // 关键：不设置 contentPadding，让 Pager 占满高度，这样旋转时不会在边界被裁剪
+                                    contentPadding = PaddingValues(vertical = 0.dp),
                                     beyondViewportPageCount = 1,
                                     key = { it }  // [修复] 使用索引作为 key，避免重复 bvid 导致崩溃
                                 ) { page ->
                                     val pageOffset = (pagerState.currentPage - page) + pagerState.currentPageOffsetFraction
-                                    
-                                    // 计算 3D 效果
+                                    val pageTransform = resolveAudioModeVerticalPageTransform(
+                                        pageOffset = pageOffset,
+                                        style = artworkStyle
+                                    )
+
+                                    // 轻量 3D：上下翻页时只做 layer 透视，不引入额外渲染管线。
                                     Box(
                                         modifier = Modifier.fillMaxSize(),
                                         contentAlignment = Alignment.Center
@@ -671,23 +699,16 @@ fun AudioModeScreen(
                                                 .width(coverSizeDp.widthDp.dp)
                                                 .height(coverSizeDp.heightDp.dp)
                                                 .graphicsLayer {
-                                                    val clampedOffset = pageOffset.coerceIn(-1f, 1f)
-                                                    val distance = abs(clampedOffset)
-                                                    rotationY = clampedOffset * -artworkStyle.maxRotationDegrees
+                                                    rotationX = pageTransform.rotationXDegrees
                                                     cameraDistance = 18f * density.density
                                                     transformOrigin = TransformOrigin(
-                                                        pivotFractionX = if (clampedOffset < 0f) 1f else 0f,
-                                                        pivotFractionY = 0.5f
+                                                        pivotFractionX = 0.5f,
+                                                        pivotFractionY = pageTransform.pivotFractionY
                                                     )
-                                                    translationX = clampedOffset * -artworkStyle.maxTranslationDp.dp.toPx()
-                                                    val scale = 1f -
-                                                        (distance * artworkStyle.maxScaleLossPercent / 100f)
-                                                            .coerceIn(0f, artworkStyle.maxScaleLossPercent / 100f)
-                                                    scaleX = scale
-                                                    scaleY = scale
-                                                    alpha = 1f -
-                                                        (distance * artworkStyle.maxAlphaLossPercent / 100f)
-                                                            .coerceIn(0f, artworkStyle.maxAlphaLossPercent / 100f)
+                                                    translationY = pageTransform.translationYDp.dp.toPx()
+                                                    scaleX = pageTransform.scale
+                                                    scaleY = pageTransform.scale
+                                                    alpha = pageTransform.alpha
                                                 }
                                         ) {
                                             AudioModeArtworkCard(
