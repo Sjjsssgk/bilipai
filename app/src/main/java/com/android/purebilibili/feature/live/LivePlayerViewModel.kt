@@ -703,13 +703,13 @@ class LivePlayerViewModel : ViewModel() {
         
         viewModelScope.launch {
             preloadLiveRoomMessages(roomId)
-            val result = DanmakuRepository.startLiveDanmaku(this, roomId)
+            val result = DanmakuRepository.startLiveDanmaku(viewModelScope, roomId)
             result.onSuccess { client ->
                 danmakuClient = client
                 CrashReporter.markLivePlaybackStage("danmaku_connected")
                 
                 // 监听弹幕消息
-                danmakuCollectJob = launch(Dispatchers.Default) {
+                danmakuCollectJob = viewModelScope.launch(Dispatchers.Default) {
                     client.messageFlow.collect { packet ->
                         handleDanmakuPacket(packet)
                     }
