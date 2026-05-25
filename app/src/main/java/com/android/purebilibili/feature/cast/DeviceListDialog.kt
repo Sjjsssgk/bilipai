@@ -14,6 +14,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import com.android.purebilibili.core.plugin.PluginManager
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -21,13 +22,14 @@ import kotlinx.coroutines.launch
 fun DeviceListDialog(
     onDismissRequest: () -> Unit,
     onDeviceSelected: (CastDeviceInfo) -> Unit,
-    onSsdpDeviceSelected: (SsdpDiscovery.SsdpDevice) -> Unit = {}
+    onSsdpDeviceSelected: (SsdpDiscovery.SsdpDevice) -> Unit = {},
+    onGoogleCastDeviceSelected: (GoogleCastRouteInfo) -> Unit = {}
 ) {
     val devices by DlnaManager.devices.collectAsState()
     val isConnected by DlnaManager.isConnected.collectAsState()
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
-    
+
     // 手动 SSDP 发现结果
     var ssdpDevices by remember { mutableStateOf<List<SsdpDiscovery.SsdpDevice>>(emptyList()) }
     var ssdpProfiles by remember { mutableStateOf<Map<String, SsdpCastClient.SsdpDeviceProfile>>(emptyMap()) }
@@ -38,6 +40,29 @@ fun DeviceListDialog(
             ssdpDevices = ssdpDevices,
             profiles = ssdpProfiles
         )
+    }
+
+    // Google Cast routes
+    val allPlugins by PluginManager.pluginsFlow.collectAsState()
+    val gcPluginEnabled = remember(allPlugins) { isGoogleCastPluginEnabled(allPlugins) }
+    val rawGcRoutes by GoogleCastRouteManager.routes.collectAsState()
+    val visibleGcRoutes = remember(gcPluginEnabled, rawGcRoutes) {
+        resolveVisibleGoogleCastRoutes(gcPluginEnabled, rawGcRoutes)
+    }
+
+    // Start/stop Google Cast discovery
+    LaunchedEffect(gcPluginEnabled) {
+        if (gcPluginEnabled) {
+            GoogleCastRouteManager.startDiscovery(context)
+        } else {
+            GoogleCastRouteManager.stopDiscovery()
+        }
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            GoogleCastRouteManager.stopDiscovery()
+        }
     }
 
     suspend fun refreshSsdpDevices() {
@@ -51,7 +76,7 @@ fun DeviceListDialog(
         ssdpProfiles = profiles
         isSearching = false
     }
-    
+
     // 启动时同时进行 Cling 和手动 SSDP 搜索
     LaunchedEffect(Unit) {
         if (isConnected) {
@@ -59,7 +84,7 @@ fun DeviceListDialog(
         }
         scope.launch { refreshSsdpDevices() }
     }
-    
+
     fun doRefresh() {
         DlnaManager.refresh()
         scope.launch { refreshSsdpDevices() }
@@ -78,8 +103,8 @@ fun DeviceListDialog(
             }
         },
         text = {
-            val hasDevices = devices.isNotEmpty() || visibleSsdpDevices.isNotEmpty()
-            
+            val hasDevices = devices.isNotEmpty() || visibleSsdpDevices.isNotEmpty() || visibleGcRoutes.isNotEmpty()
+
             if (!hasDevices && !isSearching) {
                 Box(Modifier.fillMaxWidth().height(100.dp), contentAlignment = Alignment.Center) {
                     if (!isConnected) {
@@ -114,15 +139,26 @@ fun DeviceListDialog(
                     }
                     items(visibleSsdpDevices) { ssdpDevice ->
                         ListItem(
-                            headlineContent = { 
+                            headlineContent = {
                                 Text(ssdpDevice.title)
                             },
-                            supportingContent = { 
+                            supportingContent = {
                                 Text(ssdpDevice.subtitle)
                             },
                             leadingContent = { Icon(Icons.Rounded.Tv, null, tint = MaterialTheme.colorScheme.secondary) },
                             modifier = Modifier
                                 .clickable { onSsdpDeviceSelected(ssdpDevice.device) }
+                                .fillMaxWidth()
+                        )
+                    }
+                    // Google Cast 设备
+                    items(visibleGcRoutes) { gcRoute ->
+                        ListItem(
+                            headlineContent = { Text(gcRoute.name) },
+                            supportingContent = { Text(gcRoute.description ?: "Google Cast") },
+                            leadingContent = { Icon(Icons.Rounded.Cast, null) },
+                            modifier = Modifier
+                                .clickable { onGoogleCastDeviceSelected(gcRoute) }
                                 .fillMaxWidth()
                         )
                     }
@@ -143,7 +179,7 @@ fun DeviceListDialog(
                 ) {
                     Text("导出日志")
                 }
-                
+
                 // 右侧取消按钮
                 TextButton(onClick = onDismissRequest) {
                     Text("取消")

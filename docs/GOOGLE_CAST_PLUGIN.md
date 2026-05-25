@@ -81,11 +81,24 @@ Result on 2026-05-26:
 
 Goal: discover Google Cast routes, present them alongside existing DLNA entries, and honor plugin enabled state.
 
+UI requirement: Google Cast device rows must match the existing DLNA cast list layout, spacing, selection behavior, dialog structure, and loading/empty states. Only the route-specific icon and concise Google Cast label should differ.
+
+Status: complete.
+
 Likely files:
 
 - New Google Cast manager/provider files under `feature/cast/`
 - `DeviceListDialog.kt`
 - Focused discovery/presentation policy tests
+
+Result on 2026-05-26:
+
+- Added MediaRouter-based Google Cast route discovery gated by the `google_cast` plugin enabled state.
+- Added route filtering/presentation policy tests for disabled plugin state, default/Bluetooth routes, cast-category support, fallback names, and deduplication.
+- Added Google Cast routes to the existing device dialog using the same DLNA row structure and interaction pattern; only the icon and Google Cast label differ.
+- Left Chromecast media loading as Slice 3.
+- Verified with `.\gradlew.bat :app:testDebugUnitTest --tests "*GoogleCast*" --no-daemon`.
+- Verified with `.\gradlew.bat :app:testDebugUnitTest --tests "*Cast*" --no-daemon`.
 
 ### Slice 3: Chromecast Media Load
 
@@ -114,3 +127,4 @@ Verification ladder:
 - 2026-05-26: Confirmed existing casting is DLNA/SSDP based; Google Cast/Chromecast support is not implemented yet.
 - 2026-05-26: Completed Slice 0 documentation and focused Cast baseline.
 - 2026-05-26: Completed Slice 1 Google Cast plugin shell, CAF wiring, and focused policy tests.
+- 2026-05-26: Completed Slice 2 Chromecast route discovery and device-list selection UI aligned with existing DLNA rows.

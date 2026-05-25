@@ -1843,6 +1843,10 @@ fun VideoPlayerOverlay(
                         }
                         android.widget.Toast.makeText(context, message, android.widget.Toast.LENGTH_SHORT).show()
                     }
+                },
+                onGoogleCastDeviceSelected = {
+                    showCastDialog = false
+                    android.widget.Toast.makeText(context, "Google Cast 播放将在下一步接入", android.widget.Toast.LENGTH_SHORT).show()
                 }
             )
         }
