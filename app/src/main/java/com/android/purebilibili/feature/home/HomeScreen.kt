@@ -115,6 +115,7 @@ import com.android.purebilibili.core.util.responsiveContentWidth
 import com.android.purebilibili.core.util.CardPositionManager
 import com.android.purebilibili.core.ui.adaptive.resolveDeviceUiProfile
 import com.android.purebilibili.core.ui.adaptive.resolveEffectiveMotionTier
+import com.android.purebilibili.core.ui.motion.pullRefreshReleaseSpring
 import com.android.purebilibili.core.ui.performance.TrackJankStateFlag
 import com.android.purebilibili.core.ui.performance.TrackJankStateValue
 import com.android.purebilibili.core.util.resolveScrollToTopPlan
@@ -1230,10 +1231,17 @@ fun HomeScreen(
                         //  使用 animateFloatAsState 包装偏移量
                         val animatedDragOffsetFraction by androidx.compose.animation.core.animateFloatAsState(
                             targetValue = resolvedStablePullOffsetFraction,
-                            animationSpec = androidx.compose.animation.core.spring(
-                                dampingRatio = 0.5f,  // 0.5 = 明显的弹性 (Bouncy)
-                                stiffness = 350f      // 350 = 中等刚度
-                            ),
+                            animationSpec = if (
+                                shouldSnapPullOffsetToFinger(
+                                    distanceFraction = pullDistanceFraction,
+                                    isRefreshing = isPageRefreshing,
+                                    isStateAnimating = pullRefreshState.isAnimating
+                                )
+                            ) {
+                                androidx.compose.animation.core.snap()
+                            } else {
+                                pullRefreshReleaseSpring()
+                            },
                             label = "pull_bounce"
                         )
 

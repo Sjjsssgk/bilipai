@@ -45,6 +45,12 @@ internal fun interactiveSnapSpring(): SpringSpec<Float> =
         stiffness = 420f
     )
 
+internal fun pullRefreshReleaseSpring(): SpringSpec<Float> =
+    spring(
+        dampingRatio = 0.9f,
+        stiffness = 620f
+    )
+
 internal fun expressiveSnapSpring(): SpringSpec<Float> =
     spring(
         dampingRatio = 0.72f,

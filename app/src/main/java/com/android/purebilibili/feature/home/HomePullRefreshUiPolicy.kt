@@ -3,7 +3,6 @@ package com.android.purebilibili.feature.home
 import com.android.purebilibili.core.theme.AndroidNativeVariant
 import com.android.purebilibili.core.theme.UiPreset
 import kotlin.math.min
-import kotlin.math.max
 
 internal fun resolvePullRefreshThresholdDp(): Float = 56f
 
@@ -138,8 +137,8 @@ internal fun resolvePullContentOffsetFraction(
     motionStyle: HomePullRefreshMotionStyle = HomePullRefreshMotionStyle.IOS,
     indicatorStyle: HomePullRefreshIndicatorStyle = HomePullRefreshIndicatorStyle.IOS
 ): Float {
+    if (isRefreshing) return 0f
     if (indicatorStyle == HomePullRefreshIndicatorStyle.MD3_SCREENSHOT_HANDLE) {
-        if (isRefreshing) return 0f
         val clampedDistance = distanceFraction.coerceIn(0f, 1.32f)
         return (clampedDistance * 0.82f).coerceAtMost(1.08f)
     }
@@ -173,7 +172,17 @@ internal fun resolveStablePullContentOffsetFraction(
         indicatorStyle = indicatorStyle
     )
     if (!isRefreshing && !isStateAnimating && distanceFraction <= 0f) return 0f
-    return max(previousOffsetFraction, currentOffset)
+    return currentOffset
+}
+
+internal fun shouldSnapPullOffsetToFinger(
+    distanceFraction: Float,
+    isRefreshing: Boolean,
+    isStateAnimating: Boolean
+): Boolean {
+    if (isRefreshing) return false
+    if (isStateAnimating) return false
+    return distanceFraction > 0f
 }
 
 internal fun resolveMd3ScreenshotRefreshIndicatorHeightDp(

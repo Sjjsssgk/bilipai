@@ -6,6 +6,7 @@ import com.android.purebilibili.core.theme.AndroidNativeVariant
 import com.android.purebilibili.core.theme.UiPreset
 import com.android.purebilibili.core.theme.resolveAndroidNativeChromeTokens
 import com.android.purebilibili.core.ui.motion.AppMotionTokens
+import com.android.purebilibili.core.ui.motion.pullRefreshReleaseSpring
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -105,5 +106,13 @@ class AppMotionTokensTest {
         assertEquals(240, miuix.motionEmphasizedMillis)
         assertTrue(ios.motionStandardMillis > 0, "iOS motionStandardMillis should be a nominal positive value")
         assertTrue(ios.motionEmphasizedMillis > ios.motionStandardMillis, "iOS emphasized > standard")
+    }
+
+    @Test
+    fun pullRefreshReleaseSpring_usesTightDampingForSmallRebound() {
+        val spring = pullRefreshReleaseSpring()
+
+        assertTrue(spring.dampingRatio >= 0.86f, "pull refresh release should not visibly bounce")
+        assertTrue(spring.stiffness >= 500f, "pull refresh release should settle quickly")
     }
 }

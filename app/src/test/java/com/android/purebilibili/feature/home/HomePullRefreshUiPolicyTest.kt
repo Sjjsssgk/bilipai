@@ -331,14 +331,29 @@ class HomePullRefreshUiPolicyTest {
     }
 
     @Test
-    fun `stable pull content offset does not shrink while finger moves upward`() {
+    fun `stable pull content offset follows finger upward`() {
         assertEquals(
-            0.8f,
+            0.3f,
             resolveStablePullContentOffsetFraction(
                 distanceFraction = 0.6f,
                 isRefreshing = false,
                 isStateAnimating = false,
                 previousOffsetFraction = 0.8f,
+                motionStyle = HomePullRefreshMotionStyle.IOS
+            ),
+            0.001f
+        )
+    }
+
+    @Test
+    fun `stable pull content offset grows with finger while pulling down`() {
+        assertEquals(
+            0.6f,
+            resolveStablePullContentOffsetFraction(
+                distanceFraction = 1.2f,
+                isRefreshing = false,
+                isStateAnimating = false,
+                previousOffsetFraction = 0.3f,
                 motionStyle = HomePullRefreshMotionStyle.IOS
             ),
             0.001f
@@ -357,6 +372,46 @@ class HomePullRefreshUiPolicyTest {
                 motionStyle = HomePullRefreshMotionStyle.IOS
             ),
             0.001f
+        )
+    }
+
+    @Test
+    fun `stable pull content offset clears while refresh is active`() {
+        assertEquals(
+            0f,
+            resolveStablePullContentOffsetFraction(
+                distanceFraction = 1.2f,
+                isRefreshing = true,
+                isStateAnimating = false,
+                previousOffsetFraction = 0.8f,
+                motionStyle = HomePullRefreshMotionStyle.IOS
+            ),
+            0.001f
+        )
+    }
+
+    @Test
+    fun `pull offset snaps to finger only during active drag`() {
+        assertTrue(
+            shouldSnapPullOffsetToFinger(
+                distanceFraction = 0.6f,
+                isRefreshing = false,
+                isStateAnimating = false
+            )
+        )
+        assertFalse(
+            shouldSnapPullOffsetToFinger(
+                distanceFraction = 0.6f,
+                isRefreshing = false,
+                isStateAnimating = true
+            )
+        )
+        assertFalse(
+            shouldSnapPullOffsetToFinger(
+                distanceFraction = 0.6f,
+                isRefreshing = true,
+                isStateAnimating = false
+            )
         )
     }
 
