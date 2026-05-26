@@ -2,6 +2,7 @@
 package com.android.purebilibili.feature.video.ui.overlay
 
 import android.content.ClipData
+import android.content.Context
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
@@ -91,9 +92,11 @@ import com.android.purebilibili.feature.video.usecase.applyPlaybackButtonUserAct
 import com.android.purebilibili.feature.video.usecase.playPlayerFromUserAction
 import com.android.purebilibili.feature.video.usecase.seekPlayerFromUserAction
 import com.android.purebilibili.feature.cast.DeviceListDialog
-import com.android.purebilibili.feature.cast.DlnaManager
+import com.android.purebilibili.core.plugin.CastPluginApi
+import com.android.purebilibili.core.plugin.CastPluginMediaRequest
+import com.android.purebilibili.core.plugin.CastPluginRoute
+import com.android.purebilibili.core.plugin.CastPluginPlaybackState
 import com.android.purebilibili.feature.cast.LocalProxyServer
-import com.android.purebilibili.feature.cast.SsdpCastClient
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
@@ -151,11 +154,63 @@ internal fun shouldConsumeBackgroundGesturesForEndDrawer(
     return endDrawerVisible
 }
 
-internal fun shouldReleaseCastBindingAfterDialogVisibilityChange(
-    previousVisible: Boolean,
-    currentVisible: Boolean
+internal fun shouldDismissCastDialogOnUrlFailure(castUrl: String?): Boolean = castUrl.isNullOrBlank()
+
+internal fun resolveEffectivePlayerProgress(
+    localProgress: PlayerProgress,
+    pluginState: CastPluginPlaybackState?
+): PlayerProgress {
+    if (pluginState?.isActive != true) return localProgress
+    return PlayerProgress(
+        current = pluginState.currentPositionMs,
+        duration = pluginState.durationMs,
+        buffered = pluginState.bufferedPositionMs
+    )
+}
+
+internal fun resolveEffectivePlayingState(
+    localIsPlaying: Boolean,
+    pluginState: CastPluginPlaybackState?
 ): Boolean {
-    return previousVisible && !currentVisible
+    if (pluginState?.isActive != true) return localIsPlaying
+    return pluginState.isPlaying
+}
+
+internal fun shouldActivatePluginPlaybackAfterCast(pluginState: CastPluginPlaybackState): Boolean = pluginState.isActive
+
+internal data class CastMediaSourceSignature(val aid: Long, val cid: Long, val quality: Int, val videoUrl: String)
+
+internal fun buildCastMediaSourceSignature(currentAid: Long, cid: Long, currentQuality: Int, currentVideoUrl: String): CastMediaSourceSignature {
+    return CastMediaSourceSignature(aid = currentAid, cid = cid, quality = currentQuality, videoUrl = currentVideoUrl)
+}
+
+internal fun shouldReloadActiveCastAfterMediaSourceChange(
+    activePluginExists: Boolean,
+    activeRouteExists: Boolean,
+    pluginState: CastPluginPlaybackState,
+    currentSignature: CastMediaSourceSignature,
+    lastCastSignature: CastMediaSourceSignature?
+): Boolean {
+    if (!activePluginExists || !activeRouteExists || !pluginState.isActive || lastCastSignature == null) return false
+    return currentSignature != lastCastSignature
+}
+
+internal suspend fun resolveCastPlayUrl(
+    context: Context,
+    currentAid: Long,
+    cid: Long,
+    currentQuality: Int,
+    currentVideoUrl: String
+): String? = withContext(Dispatchers.IO) {
+    val tvCastUrl = runCatching {
+        VideoRepository.getTvCastPlayUrl(aid = currentAid, cid = cid, qn = currentQuality)
+    }.getOrNull()
+    if (!tvCastUrl.isNullOrBlank()) return@withContext tvCastUrl
+    runCatching {
+        if (currentVideoUrl.isBlank()) return@runCatching null
+        LocalProxyServer.ensureStarted()
+        LocalProxyServer.getProxyUrl(context, currentVideoUrl)
+    }.getOrNull()
 }
 
 internal fun shouldPollInlineVideoOverlayProgress(
@@ -470,6 +525,18 @@ fun VideoPlayerOverlay(
     var showVideoSettings by remember { mutableStateOf(false) }  //  新增
     var showChapterList by remember { mutableStateOf(false) }  // 📖 章节列表
     var showCastDialog by remember { mutableStateOf(false) }   // 📺 投屏对话框
+    var activeCastPlugin by remember { mutableStateOf<CastPluginApi?>(null) }
+    var activeCastRoute by remember { mutableStateOf<CastPluginRoute?>(null) }
+    var lastCastMediaSignature by remember { mutableStateOf<CastMediaSourceSignature?>(null) }
+    var lastCastMediaUrl by remember { mutableStateOf<String?>(null) }
+    val pluginPlaybackState by produceState(CastPluginPlaybackState(), activeCastPlugin) {
+        val plugin = activeCastPlugin
+        if (plugin != null) {
+            plugin.playbackState.collect { value = it }
+        } else {
+            value = CastPluginPlaybackState()
+        }
+    }
     var showPlaybackOrderSheet by remember { mutableStateOf(false) }
     var showPageSelectorSheet by remember { mutableStateOf(false) }
     var currentSpeed by remember(player) { mutableFloatStateOf(player.playbackParameters.speed) }
@@ -730,52 +797,38 @@ fun VideoPlayerOverlay(
     //  双击检测状态
     var lastTapTime by remember { mutableLongStateOf(0L) }
     var showLikeAnimation by remember { mutableStateOf(false) }
-    var previousShowCastDialog by remember { mutableStateOf(false) }
     val overlayVisualPolicy = remember(configuration.screenWidthDp) {
         resolveVideoPlayerOverlayVisualPolicy(
             widthDp = configuration.screenWidthDp
         )
     }
 
-    // 📺 [DLNA] 按需权限请求
+    // 📺 按需权限请求
     val dlnaPermissionLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
         androidx.activity.result.contract.ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
         val isGranted = permissions.values.all { it }
         if (isGranted) {
-            // 权限授予，绑定服务并显示对话框
-            DlnaManager.bindService(context)
-            DlnaManager.refresh() // 刷新列表
             showCastDialog = true
         } else {
-            // 权限被拒绝，提示用户（可选）
-             com.android.purebilibili.core.util.Logger.d("VideoPlayerOverlay", "DLNA permissions denied")
+            com.android.purebilibili.core.util.Logger.d("VideoPlayerOverlay", "DLNA permissions denied")
         }
     }
 
     val onCastClickAction = {
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-            // Android 13+: NEARBY_WIFI_DEVICES
             if (androidx.core.content.ContextCompat.checkSelfPermission(context, android.Manifest.permission.NEARBY_WIFI_DEVICES) == android.content.pm.PackageManager.PERMISSION_GRANTED) {
-                 DlnaManager.bindService(context)
-                 DlnaManager.refresh()
                  showCastDialog = true
             } else {
                 dlnaPermissionLauncher.launch(arrayOf(android.Manifest.permission.NEARBY_WIFI_DEVICES))
             }
         } else if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
-            // Android 12: ACCESS_FINE_LOCATION
             if (androidx.core.content.ContextCompat.checkSelfPermission(context, android.Manifest.permission.ACCESS_FINE_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED) {
-                 DlnaManager.bindService(context)
-                 DlnaManager.refresh()
                  showCastDialog = true
             } else {
                 dlnaPermissionLauncher.launch(arrayOf(android.Manifest.permission.ACCESS_FINE_LOCATION))
             }
         } else {
-            // Android 11-: 无需运行时权限（除了 Internet/WifiState）
-            DlnaManager.bindService(context)
-            DlnaManager.refresh()
             showCastDialog = true
         }
     }
@@ -831,14 +884,20 @@ fun VideoPlayerOverlay(
             delay(delayMs)
         }
     }
+    val effectiveProgressState = remember(progressState, pluginPlaybackState) {
+        resolveEffectivePlayerProgress(progressState, pluginPlaybackState)
+    }
     val displayedProgressState = remember(
-        progressState,
+        effectiveProgressState,
         progressDisplayOverridePositionMs
     ) {
         resolveDisplayedPlayerProgressWithOverride(
-            progress = progressState,
+            progress = effectiveProgressState,
             overridePositionMs = progressDisplayOverridePositionMs
         )
+    }
+    val effectiveIsPlaying = remember(isPlaying, pluginPlaybackState) {
+        resolveEffectivePlayingState(isPlaying, pluginPlaybackState)
     }
     val centerLoadingUiState = remember(
         isBuffering,
@@ -869,16 +928,16 @@ fun VideoPlayerOverlay(
     }
 
     // 📖 计算当前章节（必须在 progressState 之后定义）
-    val currentChapter = remember(progressState.current, viewPoints) {
+    val currentChapter = remember(effectiveProgressState.current, viewPoints) {
         if (viewPoints.isEmpty()) null
-        else viewPoints.lastOrNull { progressState.current >= it.fromMs }?.content
+        else viewPoints.lastOrNull { effectiveProgressState.current >= it.fromMs }?.content
     }
 
-    LaunchedEffect(isVisible, isPlaying, isSeekScrubbing) {
+    LaunchedEffect(isVisible, effectiveIsPlaying, isSeekScrubbing) {
         if (
             shouldAutoHideInlineControlsAfterDelay(
                 controlsVisible = isVisible,
-                isPlaying = isPlaying,
+                isPlaying = effectiveIsPlaying,
                 isSeekScrubbing = isSeekScrubbing
             )
         ) {
@@ -886,7 +945,7 @@ fun VideoPlayerOverlay(
             if (
                 shouldAutoHideInlineControlsAfterDelay(
                     controlsVisible = isVisible,
-                    isPlaying = isPlaying,
+                    isPlaying = effectiveIsPlaying,
                     isSeekScrubbing = isSeekScrubbing
                 )
             ) {
@@ -945,14 +1004,18 @@ fun VideoPlayerOverlay(
         }
     }
 
-    LaunchedEffect(showCastDialog) {
-        if (shouldReleaseCastBindingAfterDialogVisibilityChange(previousShowCastDialog, showCastDialog)) {
-            DlnaManager.unbindService(context)
-        }
-        previousShowCastDialog = showCastDialog
-    }
-
     fun togglePlayPause() {
+        val plugin = activeCastPlugin
+        if (plugin != null && pluginPlaybackState.isActive) {
+            scope.launch {
+                if (pluginPlaybackState.isPlaying) {
+                    plugin.pause()
+                } else {
+                    plugin.play()
+                }
+            }
+            return
+        }
         if (player.playbackState == Player.STATE_ENDED) {
             onSeekTo?.invoke(0L) ?: player.seekTo(0L)
             playPlayerFromUserAction(player)
@@ -967,8 +1030,13 @@ fun VideoPlayerOverlay(
     }
 
     val commitSeek: (Long) -> Unit = { position ->
-        val safePosition = position.coerceAtLeast(0L)
-        onSeekTo?.invoke(safePosition) ?: seekPlayerFromUserAction(player, safePosition)
+        val plugin = activeCastPlugin
+        if (plugin != null && pluginPlaybackState.isActive) {
+            scope.launch { plugin.seek(position.coerceAtLeast(0L)) }
+        } else {
+            val safePosition = position.coerceAtLeast(0L)
+            onSeekTo?.invoke(safePosition) ?: seekPlayerFromUserAction(player, safePosition)
+        }
     }
 
     Box(
@@ -1098,7 +1166,7 @@ fun VideoPlayerOverlay(
                 
                 //  [修复] 底部控制栏 - 固定在底部
                 BottomControlBar(
-                    isPlaying = isPlaying,
+                    isPlaying = effectiveIsPlaying,
                     progress = displayedProgressState,
                     isFullscreen = isFullscreen,
                     currentSpeed = currentSpeed,
@@ -1371,7 +1439,7 @@ fun VideoPlayerOverlay(
         AnimatedVisibility(
             visible = shouldShowCenterPlayButton(
                 isVisible = isVisible,
-                isPlaying = isPlaying,
+                isPlaying = effectiveIsPlaying,
                 isQualitySwitching = isQualitySwitching,
                 isFullscreen = isFullscreen,
                 isBuffering = isBuffering,
@@ -1788,54 +1856,43 @@ fun VideoPlayerOverlay(
         )
         
         // --- 12. 📺 投屏对话框 ---
+        val currentCastSignature = remember(currentAid, cid, currentQuality, currentVideoUrl) {
+            buildCastMediaSourceSignature(currentAid, cid, currentQuality, currentVideoUrl)
+        }
         if (showCastDialog) {
-            suspend fun resolveCastUrlOrNull(): String? = withContext(Dispatchers.IO) {
-                val tvCastUrl = runCatching {
-                    VideoRepository.getTvCastPlayUrl(
-                        aid = currentAid,
-                        cid = cid,
-                        qn = currentQuality
-                    )
-                }.getOrNull()
-
-                if (!tvCastUrl.isNullOrBlank()) {
-                    return@withContext tvCastUrl
-                }
-
-                runCatching {
-                    if (currentVideoUrl.isBlank()) return@runCatching null
-                    LocalProxyServer.ensureStarted()
-                    LocalProxyServer.getProxyUrl(context, currentVideoUrl)
-                }.getOrNull()
-            }
-
             DeviceListDialog(
                 onDismissRequest = { showCastDialog = false },
-                onDeviceSelected = { device ->
-                    showCastDialog = false
+                onPluginCastDeviceSelected = { plugin, route ->
                     scope.launch {
-                        val castUrl = resolveCastUrlOrNull()
-                        if (castUrl == null) {
+                        val castUrl = resolveCastPlayUrl(context, currentAid, cid, currentQuality, currentVideoUrl)
+                        if (shouldDismissCastDialogOnUrlFailure(castUrl)) {
+                            showCastDialog = false
                             android.widget.Toast.makeText(context, "投屏地址解析失败", android.widget.Toast.LENGTH_SHORT).show()
                             return@launch
                         }
-                        DlnaManager.cast(device, castUrl, videoTitle, videoOwnerName)
-                    }
-                },
-                onSsdpDeviceSelected = { ssdpDevice ->
-                    showCastDialog = false
-                    scope.launch {
-                        val castUrl = resolveCastUrlOrNull()
-                        if (castUrl == null) {
-                            android.widget.Toast.makeText(context, "投屏地址解析失败", android.widget.Toast.LENGTH_SHORT).show()
-                            return@launch
-                        }
-                        val result = SsdpCastClient.cast(
-                            device = ssdpDevice,
-                            mediaUrl = castUrl,
+                        val pluginCastUrl = castUrl!!
+                        val mediaRequest = CastPluginMediaRequest(
+                            url = pluginCastUrl,
                             title = videoTitle,
                             creator = videoOwnerName
                         )
+                        val result = plugin.cast(context, route, mediaRequest)
+                        showCastDialog = false
+                        if (result.isSuccess) {
+                            val state = plugin.playbackState.value
+                            if (shouldActivatePluginPlaybackAfterCast(state)) {
+                                player.pause()
+                                activeCastPlugin = plugin
+                                activeCastRoute = route
+                                lastCastMediaSignature = currentCastSignature
+                                lastCastMediaUrl = pluginCastUrl
+                            } else {
+                                activeCastPlugin = null
+                                activeCastRoute = null
+                                lastCastMediaSignature = null
+                                lastCastMediaUrl = null
+                            }
+                        }
                         val message = if (result.isSuccess) {
                             "已发送投屏指令"
                         } else {
@@ -1845,6 +1902,52 @@ fun VideoPlayerOverlay(
                     }
                 }
             )
+        }
+
+        // --- 13. 🔄 Active Cast quality/source reload ---
+        LaunchedEffect(currentCastSignature, activeCastPlugin, activeCastRoute, pluginPlaybackState.isActive) {
+            val plugin = activeCastPlugin ?: return@LaunchedEffect
+            val route = activeCastRoute ?: return@LaunchedEffect
+            if (!shouldReloadActiveCastAfterMediaSourceChange(
+                    activePluginExists = true,
+                    activeRouteExists = true,
+                    pluginState = pluginPlaybackState,
+                    currentSignature = currentCastSignature,
+                    lastCastSignature = lastCastMediaSignature
+                )) {
+                return@LaunchedEffect
+            }
+
+            val castUrl = resolveCastPlayUrl(context, currentAid, cid, currentQuality, currentVideoUrl)
+            if (castUrl.isNullOrBlank()) {
+                android.widget.Toast.makeText(context, "投屏地址解析失败", android.widget.Toast.LENGTH_SHORT).show()
+                return@LaunchedEffect
+            }
+
+            if (castUrl == lastCastMediaUrl) {
+                lastCastMediaSignature = currentCastSignature
+                return@LaunchedEffect
+            }
+
+            val request = CastPluginMediaRequest(
+                url = castUrl,
+                title = videoTitle,
+                creator = videoOwnerName,
+                startPositionMs = pluginPlaybackState.currentPositionMs.coerceAtLeast(0L),
+                autoplay = pluginPlaybackState.isPlaying
+            )
+
+            val result = plugin.cast(context, route, request)
+            if (result.isSuccess) {
+                lastCastMediaSignature = currentCastSignature
+                lastCastMediaUrl = castUrl
+            } else {
+                android.widget.Toast.makeText(
+                    context,
+                    "投屏画质切换失败：${result.exceptionOrNull()?.message ?: "未知错误"}",
+                    android.widget.Toast.LENGTH_SHORT
+                ).show()
+            }
         }
     }
 }

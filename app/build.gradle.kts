@@ -375,7 +375,11 @@ dependencies {
 
     // --- 8.1 WorkManager (后台下载任务) ---
     implementation("androidx.work:work-runtime-ktx:2.11.2")
-    // --- 8.2 DLNA & Local Proxy (投屏) ---
+    // --- 8.2 Google Cast (CAF) ---
+    implementation("com.google.android.gms:play-services-cast-framework:22.3.1")
+    implementation("androidx.mediarouter:mediarouter:1.8.1")
+
+    // --- 8.3 DLNA & Local Proxy (投屏) ---
     // DLNA Casting (Cling)
     implementation("org.fourthline.cling:cling-core:2.1.2")
     implementation("org.fourthline.cling:cling-support:2.1.2")

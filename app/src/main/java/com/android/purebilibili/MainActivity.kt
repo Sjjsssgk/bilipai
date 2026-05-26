@@ -103,7 +103,6 @@ import com.android.purebilibili.core.util.BilibiliUrlParser
 import com.android.purebilibili.core.util.LocalWindowSizeClass
 import com.android.purebilibili.core.util.calculateWindowSizeClass
 import com.android.purebilibili.data.repository.VideoRepository
-import com.android.purebilibili.feature.cast.DlnaManager
 import com.android.purebilibili.feature.cast.LocalProxyServer
 import com.android.purebilibili.feature.settings.RELEASE_DISCLAIMER_ACK_KEY
 import com.android.purebilibili.feature.settings.completeAppUpdateDownload
@@ -2053,7 +2052,6 @@ open class MainActivity : AppCompatActivity() {
     
     override fun onDestroy() {
         super.onDestroy()
-        DlnaManager.unbindService(this)
     }
 }
 
