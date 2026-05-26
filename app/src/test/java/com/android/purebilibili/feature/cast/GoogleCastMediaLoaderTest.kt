@@ -89,6 +89,17 @@ class GoogleCastMediaLoaderTest {
     }
 
     @Test
+    fun `buildMediaLoadRequest preserves application dash xml content type for DASH manifests`() {
+        val request = GoogleCastMediaLoader.buildMediaLoadRequest(
+            url = "https://example.com/manifest.mpd",
+            title = "DASH Stream",
+            contentType = "application/dash+xml"
+        )
+
+        assertEquals("application/dash+xml", requireMediaInfo(request).contentType)
+    }
+
+    @Test
     fun `buildMediaLoadRequest creates metadata of movie type`() {
         val request = GoogleCastMediaLoader.buildMediaLoadRequest(
             url = "https://example.com/video.mp4",

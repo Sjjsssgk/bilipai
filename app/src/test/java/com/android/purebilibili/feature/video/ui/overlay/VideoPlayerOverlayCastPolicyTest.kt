@@ -218,6 +218,28 @@ class VideoPlayerOverlayCastPolicyTest {
         )
     }
 
+    // --- resolveCastDashDurationMs ---
+
+    @Test
+    fun `resolveCastDashDurationMs prefers timelength in ms over dash duration`() {
+        assertEquals(120000L, resolveCastDashDurationMs(timelengthMs = 120000L, dashDurationSec = 120))
+    }
+
+    @Test
+    fun `resolveCastDashDurationMs falls back to dash duration converted to ms`() {
+        assertEquals(120000L, resolveCastDashDurationMs(timelengthMs = 0L, dashDurationSec = 120))
+    }
+
+    @Test
+    fun `resolveCastDashDurationMs returns zero when both are unavailable`() {
+        assertEquals(0L, resolveCastDashDurationMs(timelengthMs = 0L, dashDurationSec = 0))
+    }
+
+    @Test
+    fun `resolveCastDashDurationMs returns zero when timelength is negative and dash is zero`() {
+        assertEquals(0L, resolveCastDashDurationMs(timelengthMs = -1L, dashDurationSec = 0))
+    }
+
     @Test
     fun `shouldReloadActiveCast returns false when signature unchanged`() {
         val sig = buildCastMediaSourceSignature(

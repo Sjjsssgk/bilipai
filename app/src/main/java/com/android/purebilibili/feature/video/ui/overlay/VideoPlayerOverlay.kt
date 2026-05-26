@@ -51,13 +51,16 @@ import com.android.purebilibili.feature.video.ui.components.PagesSelector
 import com.android.purebilibili.data.model.response.SponsorProgressMarker
 import com.android.purebilibili.data.model.response.ViewPoint
 import com.android.purebilibili.data.repository.VideoRepository
+import com.android.purebilibili.data.repository.isCastDashManifestAvailable
+import com.android.purebilibili.data.repository.selectCastDashAudio
+import com.android.purebilibili.data.repository.selectCastDashVideo
+import com.android.purebilibili.feature.video.playback.dash.buildLocalDashManifest
 import com.android.purebilibili.feature.common.resolveIndexedVideoLazyKey
 import com.android.purebilibili.feature.video.progress.PbpRidgeSample
 import io.github.alexzhirkevich.cupertino.CupertinoActivityIndicator
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Dispatchers
 
@@ -156,6 +159,8 @@ internal fun shouldConsumeBackgroundGesturesForEndDrawer(
 
 internal fun shouldDismissCastDialogOnUrlFailure(castUrl: String?): Boolean = castUrl.isNullOrBlank()
 
+internal data class CastMediaResolution(val url: String, val contentType: String)
+
 internal fun resolveEffectivePlayerProgress(
     localProgress: PlayerProgress,
     pluginState: CastPluginPlaybackState?
@@ -178,10 +183,10 @@ internal fun resolveEffectivePlayingState(
 
 internal fun shouldActivatePluginPlaybackAfterCast(pluginState: CastPluginPlaybackState): Boolean = pluginState.isActive
 
-internal data class CastMediaSourceSignature(val aid: Long, val cid: Long, val quality: Int, val videoUrl: String)
+internal data class CastMediaSourceSignature(val aid: Long, val cid: Long, val quality: Int, val videoUrl: String, val audioUrl: String = "")
 
-internal fun buildCastMediaSourceSignature(currentAid: Long, cid: Long, currentQuality: Int, currentVideoUrl: String): CastMediaSourceSignature {
-    return CastMediaSourceSignature(aid = currentAid, cid = cid, quality = currentQuality, videoUrl = currentVideoUrl)
+internal fun buildCastMediaSourceSignature(currentAid: Long, cid: Long, currentQuality: Int, currentVideoUrl: String, currentAudioUrl: String = ""): CastMediaSourceSignature {
+    return CastMediaSourceSignature(aid = currentAid, cid = cid, quality = currentQuality, videoUrl = currentVideoUrl, audioUrl = currentAudioUrl)
 }
 
 internal fun shouldReloadActiveCastAfterMediaSourceChange(
@@ -195,21 +200,66 @@ internal fun shouldReloadActiveCastAfterMediaSourceChange(
     return currentSignature != lastCastSignature
 }
 
+internal fun resolveCastDashDurationMs(timelengthMs: Long, dashDurationSec: Int): Long = when {
+    timelengthMs > 0L -> timelengthMs
+    dashDurationSec > 0 -> dashDurationSec * 1000L
+    else -> 0L
+}
+
 internal suspend fun resolveCastPlayUrl(
     context: Context,
     currentAid: Long,
     cid: Long,
     currentQuality: Int,
     currentVideoUrl: String
-): String? = withContext(Dispatchers.IO) {
-    val tvCastUrl = runCatching {
-        VideoRepository.getTvCastPlayUrl(aid = currentAid, cid = cid, qn = currentQuality)
+): CastMediaResolution? = withContext(Dispatchers.IO) {
+    val tvData = runCatching {
+        VideoRepository.getTvCastPlayData(aid = currentAid, cid = cid, qn = currentQuality)
     }.getOrNull()
-    if (!tvCastUrl.isNullOrBlank()) return@withContext tvCastUrl
+
+    if (tvData != null) {
+        val durlUrl = tvData.durl.orEmpty().firstOrNull { it.url.isNotBlank() }?.url
+            ?: tvData.durl.orEmpty().firstNotNullOfOrNull { segment ->
+                segment.backupUrl?.firstOrNull { it.isNotBlank() }
+            }
+        if (!durlUrl.isNullOrBlank()) {
+            return@withContext CastMediaResolution(url = durlUrl, contentType = "video/mp4")
+        }
+
+        val dash = tvData.dash
+        if (dash != null && isCastDashManifestAvailable(dash)) {
+            val selectedVideo = selectCastDashVideo(dash.video, currentQuality.takeIf { it > 0 } ?: 80)
+            val selectedAudio = selectCastDashAudio(dash.audio.orEmpty(), dash.dolby, dash.flac)
+            if (selectedVideo != null && selectedAudio != null) {
+                val proxyVideo = selectedVideo.copy(
+                    baseUrl = LocalProxyServer.getProxyUrl(context, selectedVideo.getValidUrl()),
+                    backupUrl = null
+                )
+                val proxyAudio = selectedAudio.copy(
+                    baseUrl = LocalProxyServer.getProxyUrl(context, selectedAudio.getValidUrl()),
+                    backupUrl = null
+                )
+                val durationMs = resolveCastDashDurationMs(tvData.timelength, dash.duration)
+                val minBufferMs = (dash.minBufferTime * 1000f).toLong().coerceAtLeast(0L)
+                val manifest = buildLocalDashManifest(
+                    durationMs = durationMs,
+                    minBufferTimeMs = minBufferMs,
+                    videoTracks = listOf(proxyVideo),
+                    audioTracks = listOf(proxyAudio)
+                )
+                val manifestUrl = LocalProxyServer.registerDashManifest(context, manifest)
+                return@withContext CastMediaResolution(url = manifestUrl, contentType = LocalProxyServer.DASH_CONTENT_TYPE)
+            }
+        }
+    }
+
     runCatching {
         if (currentVideoUrl.isBlank()) return@runCatching null
         LocalProxyServer.ensureStarted()
-        LocalProxyServer.getProxyUrl(context, currentVideoUrl)
+        CastMediaResolution(
+            url = LocalProxyServer.getProxyUrl(context, currentVideoUrl),
+            contentType = "video/mp4"
+        )
     }.getOrNull()
 }
 
@@ -1856,25 +1906,26 @@ fun VideoPlayerOverlay(
         )
         
         // --- 12. 📺 投屏对话框 ---
-        val currentCastSignature = remember(currentAid, cid, currentQuality, currentVideoUrl) {
-            buildCastMediaSourceSignature(currentAid, cid, currentQuality, currentVideoUrl)
+        val currentCastSignature = remember(currentAid, cid, currentQuality, currentVideoUrl, currentAudioUrl) {
+            buildCastMediaSourceSignature(currentAid, cid, currentQuality, currentVideoUrl, currentAudioUrl)
         }
         if (showCastDialog) {
             DeviceListDialog(
                 onDismissRequest = { showCastDialog = false },
                 onPluginCastDeviceSelected = { plugin, route ->
                     scope.launch {
-                        val castUrl = resolveCastPlayUrl(context, currentAid, cid, currentQuality, currentVideoUrl)
-                        if (shouldDismissCastDialogOnUrlFailure(castUrl)) {
+                        val resolution = resolveCastPlayUrl(context, currentAid, cid, currentQuality, currentVideoUrl)
+                        if (resolution == null) {
                             showCastDialog = false
                             android.widget.Toast.makeText(context, "投屏地址解析失败", android.widget.Toast.LENGTH_SHORT).show()
                             return@launch
                         }
-                        val pluginCastUrl = castUrl!!
+                        val pluginCastUrl = resolution.url
                         val mediaRequest = CastPluginMediaRequest(
                             url = pluginCastUrl,
                             title = videoTitle,
-                            creator = videoOwnerName
+                            creator = videoOwnerName,
+                            contentType = resolution.contentType
                         )
                         val result = plugin.cast(context, route, mediaRequest)
                         showCastDialog = false
@@ -1918,21 +1969,22 @@ fun VideoPlayerOverlay(
                 return@LaunchedEffect
             }
 
-            val castUrl = resolveCastPlayUrl(context, currentAid, cid, currentQuality, currentVideoUrl)
-            if (castUrl.isNullOrBlank()) {
+            val resolution = resolveCastPlayUrl(context, currentAid, cid, currentQuality, currentVideoUrl)
+            if (resolution == null) {
                 android.widget.Toast.makeText(context, "投屏地址解析失败", android.widget.Toast.LENGTH_SHORT).show()
                 return@LaunchedEffect
             }
 
-            if (castUrl == lastCastMediaUrl) {
+            if (resolution.url == lastCastMediaUrl) {
                 lastCastMediaSignature = currentCastSignature
                 return@LaunchedEffect
             }
 
             val request = CastPluginMediaRequest(
-                url = castUrl,
+                url = resolution.url,
                 title = videoTitle,
                 creator = videoOwnerName,
+                contentType = resolution.contentType,
                 startPositionMs = pluginPlaybackState.currentPositionMs.coerceAtLeast(0L),
                 autoplay = pluginPlaybackState.isPlaying
             )
@@ -1940,7 +1992,7 @@ fun VideoPlayerOverlay(
             val result = plugin.cast(context, route, request)
             if (result.isSuccess) {
                 lastCastMediaSignature = currentCastSignature
-                lastCastMediaUrl = castUrl
+                lastCastMediaUrl = resolution.url
             } else {
                 android.widget.Toast.makeText(
                     context,

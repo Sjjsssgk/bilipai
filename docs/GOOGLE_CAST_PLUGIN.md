@@ -189,7 +189,35 @@ Verification:
 .\gradlew.bat "-Pkotlin.compiler.execution.strategy=in-process" :app:assembleDebug --no-daemon
 ```
 
-Both commands completed with `BUILD SUCCESSFUL`.
+All commands completed with `BUILD SUCCESSFUL`.
+
+### Slice 8: Bugfix — DASH-Only Cast Audio On Legacy Chromecast
+
+Goal: fix videos that show picture but have no sound on Chromecast 2 when the BiliBili TV cast API returns DASH-only data.
+
+Root cause:
+
+- `extractTvCastPlayableUrl` previously fell back to `dash.video.first().getValidUrl()` when no `durl` URL existed.
+- DASH video URLs are video-only `.m4s` resources, so loading that URL directly into Google Cast can produce video without audio.
+- Chromecast 2 also needs conservative codec selection, so Cast DASH fallback should prefer AVC/H.264 video and AAC audio.
+
+Result on 2026-05-27:
+
+- `extractTvCastPlayableUrl` now returns only complete `durl` primary/backup URLs and no longer leaks video-only DASH URLs.
+- DASH-only TV cast payloads are converted into a local MPD manifest containing one proxied video representation and one proxied AAC audio representation.
+- `LocalProxyServer` now serves registered `/dash/*.mpd` manifests as `application/dash+xml` and adds CORS headers for manifest/proxy requests.
+- DASH video selection prefers AVC/H.264 across qualities before HEVC/HVC1, AV1, or unknown codecs; within a codec family it still prefers exact quality, then closest lower, then closest higher quality.
+- Active Cast source signatures now include `currentAudioUrl` so audio-only source changes can trigger a Cast reload.
+
+Verification:
+
+```powershell
+.\gradlew.bat "-Pkotlin.compiler.execution.strategy=in-process" :app:testDebugUnitTest --tests "com.android.purebilibili.data.repository.VideoCastPolicyTest" --tests "com.android.purebilibili.feature.cast.LocalProxyServerPolicyTest" --tests "com.android.purebilibili.feature.plugin.googlecast.GoogleCastMediaLoaderTest" --tests "com.android.purebilibili.feature.video.ui.overlay.VideoPlayerOverlayCastPolicyTest" --no-daemon
+.\gradlew.bat "-Pkotlin.compiler.execution.strategy=in-process" :app:testDebugUnitTest --tests "*Cast*" --no-daemon
+.\gradlew.bat "-Pkotlin.compiler.execution.strategy=in-process" :app:compileDebugKotlin --no-daemon
+.\gradlew.bat "-Pkotlin.compiler.execution.strategy=in-process" :app:assembleDebug --no-daemon
+git diff --check
+```
 
 ## Progress Log
 
@@ -203,3 +231,4 @@ Both commands completed with `BUILD SUCCESSFUL`.
 - 2026-05-26: Completed Slice 6 bugfix — DLNA DOCTYPE parsing, first-tap RemoteMediaClient wait, and cast playback control.
 - 2026-05-26: Updated Google Cast plugin author metadata from 'BiliPai项目组' to 'Leko (lekoOwO)' before opening upstream PR.
 - 2026-05-26: Completed Slice 7 active Google Cast quality/source reload while keeping DLNA one-shot/manual.
+- 2026-05-27: Completed Slice 8 Chromecast 2 DASH-only audio fix by replacing video-only DASH URL fallback with a local DASH manifest and AVC/AAC selection policy.
