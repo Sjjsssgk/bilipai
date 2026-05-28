@@ -48,6 +48,14 @@ class RelatedVideoItemPolicyTest {
     }
 
     @Test
+    fun `related cards default to video source route for detail to detail shared element`() {
+        assertEquals("video", resolveRelatedVideoSharedElementSourceRoute(null))
+        assertEquals("video", resolveRelatedVideoSharedElementSourceRoute(""))
+        assertEquals("video", resolveRelatedVideoSharedElementSourceRoute("video?from=related"))
+        assertEquals("home", resolveRelatedVideoSharedElementSourceRoute("home"))
+    }
+
+    @Test
     fun `press haptic is disabled for related cards`() {
         assertFalse(
             shouldTriggerRelatedVideoPressHaptic(

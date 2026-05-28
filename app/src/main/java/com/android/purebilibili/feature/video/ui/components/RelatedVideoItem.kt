@@ -40,6 +40,7 @@ import com.android.purebilibili.core.ui.transition.resolveVideoCardSharedTransit
 import com.android.purebilibili.core.ui.transition.videoCardShellSharedElementKey
 import com.android.purebilibili.feature.video.ui.FollowBadgeTone
 import com.android.purebilibili.feature.video.ui.resolveVideoFollowVisualPolicy
+import com.android.purebilibili.navigation.VideoRoute
 
 /**
  * Related Video Components
@@ -101,6 +102,13 @@ internal fun shouldTriggerRelatedVideoPressHaptic(
     return false
 }
 
+internal fun resolveRelatedVideoSharedElementSourceRoute(sourceRoute: String?): String {
+    return sourceRoute
+        ?.substringBefore("?")
+        ?.takeIf { it.isNotBlank() }
+        ?: VideoRoute.base
+}
+
 @Suppress("UNUSED_PARAMETER")
 internal fun shouldEnableRelatedVideoMetadataSharedBounds(
     transitionEnabled: Boolean
@@ -142,7 +150,9 @@ fun RelatedVideoItem(
         with(density) { configuration.screenHeightDp.dp.toPx() }
     }
     val densityValue = density.density
-    val sourceRoute = LocalVideoCardSharedElementSourceRoute.current
+    val sourceRoute = resolveRelatedVideoSharedElementSourceRoute(
+        LocalVideoCardSharedElementSourceRoute.current
+    )
     val cardSharedTransitionMotionSpec = remember(sourceRoute, transitionEnabled) {
         resolveVideoCardSharedTransitionMotionSpec(
             sourceRoute = sourceRoute,

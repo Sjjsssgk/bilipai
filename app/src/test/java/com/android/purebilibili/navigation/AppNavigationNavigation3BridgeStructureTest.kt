@@ -58,6 +58,18 @@ class AppNavigationNavigation3BridgeStructureTest {
     }
 
     @Test
+    fun videoDetailRelatedVideoClickUsesVideoSourceRouteForSharedElementPairing() {
+        val source = appNavigationSource()
+        val videoDetailBranch = source
+            .substringAfter("BiliPaiNavEntryContentRole.VIDEO_DETAIL ->")
+            .substringBefore("onBgmClick = { bgm ->")
+        val onVideoClickBlock = videoDetailBranch
+            .substringAfter("onVideoClick = { vid, options ->")
+
+        assertTrue(onVideoClickBlock.contains("sourceRoute = VideoRoute.base"))
+    }
+
+    @Test
     fun classicBackMarksVideoReturnBeforePoppingNavigation3Stack() {
         val source = appNavigationSource()
 

@@ -1490,7 +1490,12 @@ fun AppNavigation(
                                     val targetCid = options?.getLong(
                                         com.android.purebilibili.feature.video.screen.VIDEO_NAV_TARGET_CID_KEY
                                     ) ?: 0L
-                                    navigateToVideoInNavigation3(vid, targetCid, "")
+                                    navigateToVideoInNavigation3(
+                                        bvid = vid,
+                                        cid = targetCid,
+                                        coverUrl = "",
+                                        sourceRoute = VideoRoute.base
+                                    )
                                 },
                                 onBgmClick = { bgm ->
                                     if (bgm.jumpUrl.isNotEmpty()) {
