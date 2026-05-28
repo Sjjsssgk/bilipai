@@ -147,6 +147,31 @@ class VideoDetailLayoutModePolicyTest {
     }
 
     @Test
+    fun routedComment_forcesDetachedCommentThreadHostInitializationAfterAidIsReady() {
+        assertTrue(
+            shouldForceInitializeDetachedCommentThreadHostForRoute(
+                routeCommentRootRpid = 11L,
+                aid = 100L,
+                hasHandledRouteComment = false
+            )
+        )
+        assertFalse(
+            shouldForceInitializeDetachedCommentThreadHostForRoute(
+                routeCommentRootRpid = 11L,
+                aid = 0L,
+                hasHandledRouteComment = false
+            )
+        )
+        assertFalse(
+            shouldForceInitializeDetachedCommentThreadHostForRoute(
+                routeCommentRootRpid = 11L,
+                aid = 100L,
+                hasHandledRouteComment = true
+            )
+        )
+    }
+
+    @Test
     fun systemMultiWindowFullscreenPolicy_restoresMainWindowBeforeEnteringFullscreen() {
         assertTrue(
             shouldRestoreMainWindowBeforeEnteringFullscreen(

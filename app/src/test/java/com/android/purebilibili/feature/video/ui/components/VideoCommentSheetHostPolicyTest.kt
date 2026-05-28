@@ -30,6 +30,22 @@ class VideoCommentSheetHostPolicyTest {
     }
 
     @Test
+    fun `comment host should initialize for routed comment even when main sheet is hidden`() {
+        assertTrue(
+            shouldInitializeVideoCommentSheetHost(
+                mainSheetVisible = false,
+                forceInitialize = true
+            )
+        )
+        assertFalse(
+            shouldInitializeVideoCommentSheetHost(
+                mainSheetVisible = false,
+                forceInitialize = false
+            )
+        )
+    }
+
+    @Test
     fun `host should prioritize thread detail whenever subreply detail is visible`() {
         assertEquals(
             VideoCommentSheetHostContent.THREAD_DETAIL,

@@ -170,6 +170,13 @@ internal fun shouldApplyVideoCommentThreadStatusBarPadding(
     return !mainSheetVisible && topReservedPx <= 0
 }
 
+internal fun shouldInitializeVideoCommentSheetHost(
+    mainSheetVisible: Boolean,
+    forceInitialize: Boolean
+): Boolean {
+    return mainSheetVisible || forceInitialize
+}
+
 internal fun shouldDismissVideoCommentSheetHostOnBackdropTap(
     mainSheetVisible: Boolean
 ): Boolean {
@@ -239,6 +246,7 @@ fun VideoCommentSheetHost(
     onTimestampClick: ((Long) -> Unit)? = null,
     maxTimestampMs: Long? = null,
     onImagePreview: ((List<String>, Int, Rect?, ImagePreviewTextContent?) -> Unit)? = null,
+    forceInitialize: Boolean = false,
     handleFraudEvents: Boolean = true
 ) {
     val context = LocalContext.current
@@ -377,8 +385,8 @@ fun VideoCommentSheetHost(
         }
     }
 
-    LaunchedEffect(aid, mainSheetVisible, preferredSortMode, upMid, expectedReplyCount) {
-        if (mainSheetVisible) {
+    LaunchedEffect(aid, mainSheetVisible, forceInitialize, preferredSortMode, upMid, expectedReplyCount) {
+        if (shouldInitializeVideoCommentSheetHost(mainSheetVisible, forceInitialize)) {
             commentViewModel.init(
                 aid = aid,
                 upMid = upMid,

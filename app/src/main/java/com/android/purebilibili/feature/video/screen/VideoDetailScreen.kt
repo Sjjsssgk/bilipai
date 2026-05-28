@@ -1262,11 +1262,13 @@ fun VideoDetailScreen(
             commentViewModel.openSubReply(rootReply, openCommentTargetRpidFromRoute)
             hasHandledCommentRootFromRoute = true
         } else if (!commentState.isRepliesLoading) {
-            commentViewModel.openSubReplyFromRoute(
+            val openStarted = commentViewModel.openSubReplyFromRoute(
                 rootReplyId = openCommentRootRpidFromRoute,
                 targetReplyId = openCommentTargetRpidFromRoute
             )
-            hasHandledCommentRootFromRoute = true
+            if (openStarted) {
+                hasHandledCommentRootFromRoute = true
+            }
         }
     }
     val commentDefaultSortMode by com.android.purebilibili.core.store.SettingsManager
@@ -4330,6 +4332,11 @@ fun VideoDetailScreen(
             successState = successState,
             commentState = commentState,
             commentViewModel = commentViewModel,
+            forceInitialize = shouldForceInitializeDetachedCommentThreadHostForRoute(
+                routeCommentRootRpid = openCommentRootRpidFromRoute,
+                aid = successState?.info?.aid ?: 0L,
+                hasHandledRouteComment = hasHandledCommentRootFromRoute
+            ),
             viewModel = viewModel,
             onUpClick = navigateToUserSpaceFromVideo,
             onNavigateToRelatedVideo = { targetVideoId ->
@@ -5300,6 +5307,14 @@ internal fun resolveVideoDetailCommentThreadHostMainSheetVisible(
     return useEmbeddedPresentation && subReplyVisible
 }
 
+internal fun shouldForceInitializeDetachedCommentThreadHostForRoute(
+    routeCommentRootRpid: Long,
+    aid: Long,
+    hasHandledRouteComment: Boolean
+): Boolean {
+    return routeCommentRootRpid > 0L && aid > 0L && !hasHandledRouteComment
+}
+
 internal fun shouldApplyPhoneAutoRotatePolicy(
     isCompactDevice: Boolean
 ): Boolean {
@@ -5656,6 +5671,7 @@ private fun DetachedVideoCommentThreadHost(
     successState: PlayerUiState.Success?,
     commentState: CommentUiState,
     commentViewModel: VideoCommentViewModel,
+    forceInitialize: Boolean,
     viewModel: PlayerViewModel,
     onUpClick: (Long) -> Unit,
     onNavigateToRelatedVideo: (String) -> Unit,
@@ -5695,6 +5711,7 @@ private fun DetachedVideoCommentThreadHost(
         topReservedPx = topReservedPx,
         onTimestampClick = onTimestampClick,
         maxTimestampMs = successState?.videoDurationMs?.takeIf { it > 0L },
+        forceInitialize = forceInitialize,
         handleFraudEvents = false
     )
 }

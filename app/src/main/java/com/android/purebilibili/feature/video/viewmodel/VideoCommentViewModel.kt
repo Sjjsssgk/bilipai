@@ -140,6 +140,13 @@ internal fun resolveRoutedCommentRootReply(
         ?: remoteData?.root?.takeIf { it.rpid == rootReplyId }
 }
 
+internal fun shouldStartRoutedSubReplyOpen(
+    rootReplyId: Long,
+    currentAid: Long
+): Boolean {
+    return rootReplyId > 0L && currentAid > 0L
+}
+
 class VideoCommentViewModel : ViewModel() {
     private val _commentState = MutableStateFlow(CommentUiState())
     val commentState = _commentState.asStateFlow()
@@ -358,8 +365,8 @@ class VideoCommentViewModel : ViewModel() {
         loadSubReplies(rootReply.oid, rootReply.rpid, 1)
     }
 
-    fun openSubReplyFromRoute(rootReplyId: Long, targetReplyId: Long = 0L) {
-        if (rootReplyId <= 0L || currentAid <= 0L) return
+    fun openSubReplyFromRoute(rootReplyId: Long, targetReplyId: Long = 0L): Boolean {
+        if (!shouldStartRoutedSubReplyOpen(rootReplyId, currentAid)) return false
 
         resolveRoutedCommentRootReply(
             loadedReplies = allReplies.ifEmpty { _commentState.value.replies },
@@ -367,9 +374,10 @@ class VideoCommentViewModel : ViewModel() {
             rootReplyId = rootReplyId
         )?.let { rootReply ->
             openSubReply(rootReply, targetReplyId)
-            return
+            return true
         }
 
+        val routeAid = currentAid
         _subReplyState.value = _subReplyState.value.copy(
             visible = false,
             isLoading = true,
@@ -379,7 +387,7 @@ class VideoCommentViewModel : ViewModel() {
 
         viewModelScope.launch {
             CommentRepository.getSubCommentsForSubject(
-                oid = currentAid,
+                oid = routeAid,
                 type = 1,
                 rootId = rootReplyId,
                 page = 1,
@@ -436,6 +444,7 @@ class VideoCommentViewModel : ViewModel() {
                 )
             }
         }
+        return true
     }
 
     fun closeSubReply() {

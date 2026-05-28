@@ -181,4 +181,26 @@ class CommentPaginationPolicyTest {
             )
         )
     }
+
+    @Test
+    fun `routed sub reply open only starts after aid is ready`() {
+        assertFalse(
+            shouldStartRoutedSubReplyOpen(
+                rootReplyId = 11L,
+                currentAid = 0L
+            )
+        )
+        assertFalse(
+            shouldStartRoutedSubReplyOpen(
+                rootReplyId = 0L,
+                currentAid = 100L
+            )
+        )
+        assertTrue(
+            shouldStartRoutedSubReplyOpen(
+                rootReplyId = 11L,
+                currentAid = 100L
+            )
+        )
+    }
 }
