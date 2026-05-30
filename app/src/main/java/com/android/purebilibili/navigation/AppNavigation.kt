@@ -734,7 +734,17 @@ fun AppNavigation(
         )
         val shouldDeferBottomBarReveal = shouldDeferBottomBarRevealOnVideoReturn(
             isReturningFromDetail = navigation3ReturnSession.isReturningFromDetail,
-            currentRoute = currentRoute
+            currentRoute = currentRoute,
+            cardTransitionEnabled = cardTransitionEnabled
+        )
+        // 挂载闸门：仅按路由/侧栏/平板判断，不含返回延迟。
+        // 让底栏 AnimatedVisibility 在首页期间保持挂载，使延迟解除后能播放 slideIn+fadeIn 淡入而非硬切。
+        val bottomBarMountGate = shouldShowBottomBarForNavigation(
+            activeRoute = activeBottomTabRoute,
+            visibleBottomBarRoutes = visibleBottomBarRoutes,
+            useSideNavigation = useSideNavigation,
+            shouldHideBottomBarOnTablet = shouldHideBottomBarOnTablet,
+            shouldDeferReveal = false
         )
         val showBottomBar = shouldShowBottomBarForNavigation(
             activeRoute = activeBottomTabRoute,
@@ -2181,8 +2191,9 @@ fun AppNavigation(
             } // End of Row
 
             // ===== 全局底栏 (Global Bottom Bar) =====
-            // 依然保留 showBottomBar 作为外层判断，避免不必要的 AnimatedVisibility 挂载
-            if (showBottomBar && bottomBarVisibilityMode != SettingsManager.BottomBarVisibilityMode.ALWAYS_HIDDEN) {
+            // 外层用不含返回延迟的 bottomBarMountGate 作为挂载判断：避免非底栏页的多余挂载，
+            // 同时让底栏在首页期间保持挂载，从而在返回延迟解除时由内层 AnimatedVisibility 播放淡入而非硬切。
+            if (bottomBarMountGate && bottomBarVisibilityMode != SettingsManager.BottomBarVisibilityMode.ALWAYS_HIDDEN) {
                 // 用于处理底栏悬浮时的点击穿透问题，底栏自身处理点击
                 Box(
                     modifier = Modifier.align(Alignment.BottomCenter).zIndex(1f)

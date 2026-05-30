@@ -434,7 +434,7 @@ fun ElegantVideoCard(
                 transitionEnabled = transitionEnabled
             )
         }
-        val useCardShellSharedBounds = coverSharedEnabled && !effectiveSharedElementSourceRoute.isNullOrBlank()
+        val useCardShellSharedBounds = sharedTransitionOwnership.useCardShellSharedBounds
         val connectedCardShape = remember(cardCornerRadius) { RoundedCornerShape(cardCornerRadius) }
         val cardContainerModifier = if (infoSurfaceAppearance.useTintedSurface) {
             Modifier
@@ -475,7 +475,10 @@ fun ElegantVideoCard(
             modifier = cardContainerModifier
                 .then(cardShellModifier)
         ) {
-            val metadataSharedEnabled = sharedTransitionOwnership.useMetadataSharedBounds
+            val titleSharedEnabled = sharedTransitionOwnership.useTitleSharedBounds
+            val avatarSharedEnabled = sharedTransitionOwnership.useAvatarSharedBounds
+            val upNameSharedEnabled = sharedTransitionOwnership.useUpNameSharedBounds
+            val statsSharedEnabled = sharedTransitionOwnership.useStatsSharedBounds
         
         //  [性能优化] 封面圆角形状缓存（避免重组时重复创建）
         val coverShape = remember(
@@ -501,7 +504,7 @@ fun ElegantVideoCard(
             }
         }
 
-        val coverModifier = if (sharedTransitionOwnership.useCoverSharedBounds && !useCardShellSharedBounds) {
+        val coverModifier = if (sharedTransitionOwnership.useCoverSharedBounds) {
             with(requireNotNull(sharedTransitionScope)) {
                 Modifier.sharedBounds(
                     sharedContentState = rememberSharedContentState(
@@ -681,7 +684,7 @@ fun ElegantVideoCard(
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         var viewsOnCoverModifier = Modifier.widthIn(min = compactStatsLayout.primaryMinWidthDp.dp)
-                        if (metadataSharedEnabled) {
+                        if (statsSharedEnabled) {
                             with(requireNotNull(sharedTransitionScope)) {
                                 viewsOnCoverModifier = viewsOnCoverModifier.sharedBounds(
                                     sharedContentState = rememberSharedContentState(key = com.android.purebilibili.core.ui.transition.videoViewsSharedElementKey(video.bvid)),
@@ -923,7 +926,7 @@ fun ElegantVideoCard(
                 .weight(1f)
                 .semantics { contentDescription = "视频标题: ${video.title}" }
             
-            if (metadataSharedEnabled) {
+            if (titleSharedEnabled) {
                 with(requireNotNull(sharedTransitionScope)) {
                     titleModifier = titleModifier.sharedBounds(
                         sharedContentState = rememberSharedContentState(key = com.android.purebilibili.core.ui.transition.videoTitleSharedElementKey(video.bvid)),
@@ -1046,7 +1049,7 @@ fun ElegantVideoCard(
                 upNameModifier = upNameModifier.clickable { onUpClick?.invoke(upClickMid) }
             }
             
-            if (metadataSharedEnabled) {
+            if (upNameSharedEnabled) {
                 with(requireNotNull(sharedTransitionScope)) {
                     upNameModifier = upNameModifier.sharedBounds(
                         sharedContentState = rememberSharedContentState(key = com.android.purebilibili.core.ui.transition.videoUpNameSharedElementKey(video.bvid)),
@@ -1058,7 +1061,7 @@ fun ElegantVideoCard(
                 }
             }
             var followBadgeModifier = Modifier.wrapContentSize()
-            if (metadataSharedEnabled) {
+            if (statsSharedEnabled) {
                 with(requireNotNull(sharedTransitionScope)) {
                     followBadgeModifier = followBadgeModifier.sharedBounds(
                         sharedContentState = rememberSharedContentState(key = com.android.purebilibili.core.ui.transition.videoUpActionSharedElementKey(video.bvid)),
@@ -1111,7 +1114,7 @@ fun ElegantVideoCard(
                             .clip(CircleShape)
                             .background(MaterialTheme.colorScheme.surfaceVariant)
 
-                        if (metadataSharedEnabled) {
+                        if (avatarSharedEnabled) {
                             with(requireNotNull(sharedTransitionScope)) {
                                 avatarModifier = avatarModifier.sharedBounds(
                                     sharedContentState = rememberSharedContentState(key = com.android.purebilibili.core.ui.transition.videoAvatarSharedElementKey(video.bvid)),
@@ -1187,7 +1190,7 @@ fun ElegantVideoCard(
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 var viewsRowModifier = Modifier.wrapContentSize()
-                if (metadataSharedEnabled) {
+                if (statsSharedEnabled) {
                     with(requireNotNull(sharedTransitionScope)) {
                         viewsRowModifier = viewsRowModifier.sharedBounds(
                             sharedContentState = rememberSharedContentState(key = com.android.purebilibili.core.ui.transition.videoViewsSharedElementKey(video.bvid)),

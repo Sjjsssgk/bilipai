@@ -45,4 +45,59 @@ class AppNavigationPlaybackPolicyTest {
             )
         )
     }
+
+    @Test
+    fun returningToHomeWithCardTransition_shouldDeferBottomBarReveal() {
+        assertTrue(
+            shouldDeferBottomBarRevealOnVideoReturn(
+                isReturningFromDetail = true,
+                currentRoute = ScreenRoutes.Home.route,
+                cardTransitionEnabled = true
+            )
+        )
+    }
+
+    @Test
+    fun returningToMainHostWithCardTransition_shouldDeferBottomBarReveal() {
+        assertTrue(
+            shouldDeferBottomBarRevealOnVideoReturn(
+                isReturningFromDetail = true,
+                currentRoute = "main_host",
+                cardTransitionEnabled = true
+            )
+        )
+    }
+
+    @Test
+    fun returningToHomeWithCardTransitionDisabled_shouldNotDeferBottomBarReveal() {
+        assertFalse(
+            shouldDeferBottomBarRevealOnVideoReturn(
+                isReturningFromDetail = true,
+                currentRoute = ScreenRoutes.Home.route,
+                cardTransitionEnabled = false
+            )
+        )
+    }
+
+    @Test
+    fun notReturningFromDetail_shouldNotDeferBottomBarReveal() {
+        assertFalse(
+            shouldDeferBottomBarRevealOnVideoReturn(
+                isReturningFromDetail = false,
+                currentRoute = ScreenRoutes.Home.route,
+                cardTransitionEnabled = true
+            )
+        )
+    }
+
+    @Test
+    fun returningButStillOnNonHomeRoute_shouldNotDeferBottomBarReveal() {
+        assertFalse(
+            shouldDeferBottomBarRevealOnVideoReturn(
+                isReturningFromDetail = true,
+                currentRoute = VideoRoute.route,
+                cardTransitionEnabled = true
+            )
+        )
+    }
 }
