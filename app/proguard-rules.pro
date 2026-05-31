@@ -81,9 +81,16 @@
 -keep class com.android.purebilibili.feature.video.ui.section.** { *; }
 -keep class com.android.purebilibili.feature.video.ui.overlay.** { *; }
 
-# Release 下底栏搜索入口依赖 Compose 动画协程完成回调再交接到搜索页。
-# 保留 BottomBarKt，避免 R8 优化破坏搜索胶囊点击、展开与完成回调链路。
+# Release 下底栏搜索入口曾出现点击无响应，只在正式版复现。
+# 保留底栏搜索、搜索页入口和导航交接相关的 Compose 函数及合成 lambda，
+# 避免 R8 优化破坏点击、展开、焦点和搜索页入场链路。
 -keep class com.android.purebilibili.feature.home.components.BottomBarKt { *; }
+-keep class com.android.purebilibili.feature.home.components.BottomBarKt$* { *; }
+-keep class com.android.purebilibili.feature.search.SearchScreenKt { *; }
+-keep class com.android.purebilibili.feature.search.SearchScreenKt$* { *; }
+-keep class com.android.purebilibili.feature.search.SearchEntryMotionSource { *; }
+-keep class com.android.purebilibili.navigation.AppNavigationKt { *; }
+-keep class com.android.purebilibili.navigation.AppNavigationKt$* { *; }
 
 # === Haze (毛玻璃效果) ===
 -keep class dev.chrisbanes.haze.** { *; }

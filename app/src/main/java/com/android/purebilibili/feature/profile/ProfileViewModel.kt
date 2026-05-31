@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.android.purebilibili.core.network.NetworkModule
 import com.android.purebilibili.core.network.WbiUtils
+import com.android.purebilibili.core.network.DynamicDeleteRequest
 import com.android.purebilibili.core.store.AccountSessionStore
 import com.android.purebilibili.core.store.StoredAccountSession
 import com.android.purebilibili.core.store.TokenManager
@@ -16,6 +17,7 @@ import com.android.purebilibili.data.model.response.SpaceDynamicItem
 import com.android.purebilibili.data.model.response.WbiImg
 import com.android.purebilibili.data.repository.FavoriteRepository
 import com.android.purebilibili.data.repository.BangumiRepository
+import com.android.purebilibili.feature.dynamic.DynamicDeleteAction
 import com.android.purebilibili.feature.bangumi.MY_FOLLOW_TYPE_BANGUMI
 import com.android.purebilibili.feature.home.UserState
 import kotlinx.coroutines.async
@@ -329,6 +331,52 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
     fun clearProfileSpaceMessage() {
         val current = _uiState.value as? ProfileUiState.Success ?: return
         _uiState.value = current.copy(space = current.space.copy(signSaveMessage = null, message = null))
+    }
+
+    fun deleteProfileDynamic(action: DynamicDeleteAction, onResult: (Boolean, String) -> Unit) {
+        viewModelScope.launch {
+            try {
+                if (action.dynamicId.isBlank()) {
+                    onResult(false, "无法删除该动态")
+                    return@launch
+                }
+                val csrf = TokenManager.csrfCache
+                if (csrf.isNullOrBlank()) {
+                    onResult(false, "请先登录")
+                    return@launch
+                }
+
+                val response = NetworkModule.dynamicApi.deleteDynamic(
+                    csrf = csrf,
+                    body = DynamicDeleteRequest(
+                        dyn_id_str = action.dynamicId,
+                        dyn_type = action.dynType,
+                        rid_str = action.rid
+                    )
+                )
+                if (response.code == 0) {
+                    removeProfileDynamic(action.dynamicId)
+                    onResult(true, "已删除动态")
+                } else {
+                    onResult(false, response.message.ifBlank { "删除失败" })
+                }
+            } catch (e: Exception) {
+                onResult(false, e.message ?: "网络错误")
+            }
+        }
+    }
+
+    private fun removeProfileDynamic(dynamicId: String) {
+        val current = _uiState.value as? ProfileUiState.Success ?: return
+        val updatedItems = current.space.dynamicItems.filterNot { item ->
+            item.id_str == dynamicId ||
+                item.modules.module_more?.three_point_items.orEmpty().any { menu ->
+                    menu.params?.dyn_id_str == dynamicId
+                }
+        }
+        _uiState.value = current.copy(
+            space = current.space.copy(dynamicItems = updatedItems)
+        )
     }
 
     fun updateProfileSign(sign: String) {

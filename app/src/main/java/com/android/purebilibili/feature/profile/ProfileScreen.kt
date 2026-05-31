@@ -38,11 +38,14 @@ import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.foundation.border
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
@@ -111,6 +114,7 @@ import com.android.purebilibili.data.model.response.FollowBangumiItem
 import com.android.purebilibili.data.model.response.SpaceAggregateArchiveItem
 import com.android.purebilibili.data.model.response.SpaceDynamicItem
 import com.android.purebilibili.data.model.response.SpaceVideoItem
+import com.android.purebilibili.feature.dynamic.DynamicDeleteAction
 import com.android.purebilibili.feature.home.components.BottomBarLiquidSegmentedControl
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 
@@ -557,6 +561,11 @@ fun ProfileScreen(
                         onWatchLaterClick = onWatchLaterClick,
                         onInboxClick = onInboxClick,
                         onVideoClick = onVideoClick,
+                        onDynamicDeleteClick = { action ->
+                            viewModel.deleteProfileDynamic(action) { _, message ->
+                                Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                            }
+                        },
                         onBangumiClick = onBangumiClick,
                         onBangumiMoreClick = onBangumiMoreClick,
                         scrollBehavior = scrollBehavior,
@@ -837,6 +846,7 @@ private fun ProfileSpaceContent(
     onWatchLaterClick: () -> Unit,
     onInboxClick: () -> Unit,
     onVideoClick: (String) -> Unit,
+    onDynamicDeleteClick: (DynamicDeleteAction) -> Unit,
     onBangumiClick: (Long, Long) -> Unit,
     onBangumiMoreClick: () -> Unit,
     scrollBehavior: TopAppBarScrollBehavior,
@@ -985,6 +995,7 @@ private fun ProfileSpaceContent(
                     onInboxClick = onInboxClick,
                     onAccountManageClick = onAccountManageClick,
                     onLogout = onLogout,
+                    onDynamicDeleteClick = onDynamicDeleteClick,
                     modifier = Modifier.weight(1f),
                     contentPadding = PaddingValues(bottom = 48.dp)
                 )
@@ -1037,7 +1048,8 @@ private fun ProfileSpaceContent(
                         onWatchLaterClick = onWatchLaterClick,
                         onInboxClick = onInboxClick,
                         onAccountManageClick = onAccountManageClick,
-                        onLogout = onLogout
+                        onLogout = onLogout,
+                        onDynamicDeleteClick = onDynamicDeleteClick
                     )
                 }
             }
@@ -1088,6 +1100,7 @@ private fun ProfileSpaceFeedColumn(
     onInboxClick: () -> Unit,
     onAccountManageClick: () -> Unit,
     onLogout: () -> Unit,
+    onDynamicDeleteClick: (DynamicDeleteAction) -> Unit,
     modifier: Modifier,
     contentPadding: PaddingValues
 ) {
@@ -1112,7 +1125,8 @@ private fun ProfileSpaceFeedColumn(
                 onWatchLaterClick = onWatchLaterClick,
                 onInboxClick = onInboxClick,
                 onAccountManageClick = onAccountManageClick,
-                onLogout = onLogout
+                onLogout = onLogout,
+                onDynamicDeleteClick = onDynamicDeleteClick
             )
         }
     }
@@ -1343,7 +1357,8 @@ private fun ProfileSpaceTabBody(
     onWatchLaterClick: () -> Unit,
     onInboxClick: () -> Unit,
     onAccountManageClick: () -> Unit,
-    onLogout: () -> Unit
+    onLogout: () -> Unit,
+    onDynamicDeleteClick: (DynamicDeleteAction) -> Unit
 ) {
     when (space.selectedTab) {
         ProfileSpaceMainTab.HOME -> ProfileSpaceHome(
@@ -1364,7 +1379,11 @@ private fun ProfileSpaceTabBody(
             onAccountManageClick = onAccountManageClick,
             onLogout = onLogout
         )
-        ProfileSpaceMainTab.DYNAMIC -> ProfileDynamicList(space.dynamicItems, onVideoClick)
+        ProfileSpaceMainTab.DYNAMIC -> ProfileDynamicList(
+            items = space.dynamicItems,
+            onVideoClick = onVideoClick,
+            onDeleteClick = onDynamicDeleteClick
+        )
         ProfileSpaceMainTab.CONTRIBUTION -> ProfileVideoList(space.contributionVideos, onVideoClick)
         ProfileSpaceMainTab.FAVORITE -> ProfileFavoriteFolderList(user.mid, space.favoriteFolders, onFavoriteFolderClick)
         ProfileSpaceMainTab.BANGUMI -> ProfileBangumiList(space.bangumiItems, onBangumiClick)
@@ -1706,14 +1725,22 @@ private fun ProfileVideoList(videos: List<SpaceVideoItem>, onVideoClick: (String
 }
 
 @Composable
-private fun ProfileDynamicList(items: List<SpaceDynamicItem>, onVideoClick: (String) -> Unit) {
+private fun ProfileDynamicList(
+    items: List<SpaceDynamicItem>,
+    onVideoClick: (String) -> Unit,
+    onDeleteClick: (DynamicDeleteAction) -> Unit
+) {
     if (items.isEmpty()) {
         ProfileSpaceEmpty("暂无动态")
         return
     }
     Column(modifier = Modifier.padding(vertical = 4.dp)) {
         items.forEachIndexed { index, item ->
-            ProfileDynamicCard(item = item, onVideoClick = onVideoClick)
+            ProfileDynamicCard(
+                item = item,
+                onVideoClick = onVideoClick,
+                onDeleteClick = onDeleteClick
+            )
             if (index != items.lastIndex) {
                 HorizontalDivider(
                     modifier = Modifier.padding(vertical = 4.dp),
@@ -1726,7 +1753,11 @@ private fun ProfileDynamicList(items: List<SpaceDynamicItem>, onVideoClick: (Str
 }
 
 @Composable
-private fun ProfileDynamicCard(item: SpaceDynamicItem, onVideoClick: (String) -> Unit) {
+private fun ProfileDynamicCard(
+    item: SpaceDynamicItem,
+    onVideoClick: (String) -> Unit,
+    onDeleteClick: (DynamicDeleteAction) -> Unit
+) {
     val author = item.modules.module_author
     val authorName = resolveProfileDynamicAuthorName(item)
     val publishText = resolveProfileDynamicPublishText(item)
@@ -1734,7 +1765,33 @@ private fun ProfileDynamicCard(item: SpaceDynamicItem, onVideoClick: (String) ->
     val orig = item.orig
     val moreIcon = rememberAppMoreIcon()
     val context = LocalContext.current
+    val deleteAction = remember(item) { resolveProfileDynamicDeleteAction(item) }
     var showMoreMenu by remember(item.id_str) { mutableStateOf(false) }
+    var pendingDeleteAction by remember(item.id_str) { mutableStateOf<DynamicDeleteAction?>(null) }
+
+    pendingDeleteAction?.let { action ->
+        AlertDialog(
+            onDismissRequest = { pendingDeleteAction = null },
+            icon = { Icon(CupertinoIcons.Default.Trash, contentDescription = null) },
+            title = { Text(action.title) },
+            text = { Text(action.content) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        pendingDeleteAction = null
+                        onDeleteClick(action)
+                    }
+                ) {
+                    Text(action.confirmText, color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingDeleteAction = null }) {
+                    Text(action.cancelText)
+                }
+            }
+        )
+    }
 
     Column(
         modifier = Modifier
@@ -1804,6 +1861,23 @@ private fun ProfileDynamicCard(item: SpaceDynamicItem, onVideoClick: (String) ->
                             Toast.makeText(context, "已复制链接", Toast.LENGTH_SHORT).show()
                         }
                     )
+                    if (deleteAction != null) {
+                        DropdownMenuItem(
+                            text = { Text(deleteAction.label) },
+                            leadingIcon = {
+                                Icon(
+                                    CupertinoIcons.Default.Trash,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            },
+                            onClick = {
+                                showMoreMenu = false
+                                pendingDeleteAction = deleteAction
+                            }
+                        )
+                    }
                 }
             }
         }
@@ -1881,6 +1955,10 @@ private fun ProfileDynamicMajorContent(item: SpaceDynamicItem, onVideoClick: (St
         ?: major?.article?.title?.takeIf { it.isNotBlank() }
     val clickableBvid = major?.archive?.bvid?.takeIf { it.isNotBlank() }
     var selectedImageIndex by remember(item.id_str, imageUrls) { mutableIntStateOf(-1) }
+    var sourceRect by remember(item.id_str, imageUrls) { mutableStateOf<Rect?>(null) }
+    val context = LocalContext.current
+    val dynamicPreviewTextVisible by SettingsManager.getDynamicImagePreviewTextVisible(context)
+        .collectAsState(initial = true)
     val previewText = remember(item, title) {
         ImagePreviewTextContent(
             headline = resolveProfileDynamicAuthorName(item),
@@ -1908,7 +1986,7 @@ private fun ProfileDynamicMajorContent(item: SpaceDynamicItem, onVideoClick: (St
         }
         if (cover.isNotBlank()) {
             AsyncImage(
-                model = ImageRequest.Builder(LocalContext.current)
+                model = ImageRequest.Builder(context)
                     .data(cover)
                     .crossfade(true)
                     .build(),
@@ -1918,6 +1996,9 @@ private fun ProfileDynamicMajorContent(item: SpaceDynamicItem, onVideoClick: (St
                     .fillMaxWidth(0.72f)
                     .aspectRatio(1f)
                     .clip(RoundedCornerShape(6.dp))
+                    .onGloballyPositioned { coordinates ->
+                        sourceRect = coordinates.boundsInWindow()
+                    }
                     .then(
                         if (clickableBvid == null && imageUrls.isNotEmpty()) {
                             Modifier.clickable { selectedImageIndex = 0 }
@@ -1934,7 +2015,10 @@ private fun ProfileDynamicMajorContent(item: SpaceDynamicItem, onVideoClick: (St
         ImagePreviewDialog(
             images = imageUrls,
             initialIndex = selectedImageIndex.coerceIn(imageUrls.indices),
+            sourceRect = sourceRect,
+            sourceCornerRadiusDp = 6f,
             textContent = previewText,
+            defaultTextVisible = dynamicPreviewTextVisible,
             onDismiss = { selectedImageIndex = -1 }
         )
     }

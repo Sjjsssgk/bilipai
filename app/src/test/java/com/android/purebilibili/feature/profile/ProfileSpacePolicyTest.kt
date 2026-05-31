@@ -2,6 +2,10 @@ package com.android.purebilibili.feature.profile
 
 import com.android.purebilibili.data.model.response.FavFolder
 import com.android.purebilibili.data.model.response.FollowBangumiItem
+import com.android.purebilibili.data.model.response.DynamicMoreModule
+import com.android.purebilibili.data.model.response.DynamicThreePointItem
+import com.android.purebilibili.data.model.response.DynamicThreePointModal
+import com.android.purebilibili.data.model.response.DynamicThreePointParams
 import com.android.purebilibili.data.model.response.SpaceAggregateArchiveItem
 import com.android.purebilibili.data.model.response.SpaceAggregateData
 import com.android.purebilibili.data.model.response.SpaceAggregateFavoriteItem
@@ -228,5 +232,41 @@ class ProfileSpacePolicyTest {
 
         assertEquals("https://i0.hdslb.com/bfs/orig.jpg", resolveProfileDynamicCover(item.orig!!))
         assertEquals("点赞 1.2万", resolveProfileDynamicActionText("点赞", 12000))
+    }
+
+    @Test
+    fun `profile dynamic delete action uses server menu params`() {
+        val item = SpaceDynamicItem(
+            id_str = "1063487284684259332",
+            modules = SpaceDynamicModules(
+                module_more = DynamicMoreModule(
+                    three_point_items = listOf(
+                        DynamicThreePointItem(
+                            label = "删除",
+                            type = "THREE_POINT_DELETE",
+                            params = DynamicThreePointParams(
+                                dyn_id_str = "1063487284684259332",
+                                dyn_type = 1,
+                                rid_str = "1063487284684259332"
+                            ),
+                            modal = DynamicThreePointModal(
+                                title = "要删除动态吗？",
+                                content = "动态删除后将无法恢复，请谨慎操作",
+                                confirm = "确认删除",
+                                cancel = "再想想"
+                            )
+                        )
+                    )
+                )
+            )
+        )
+
+        val action = resolveProfileDynamicDeleteAction(item)
+
+        assertEquals("1063487284684259332", action?.dynamicId)
+        assertEquals(1, action?.dynType)
+        assertEquals("1063487284684259332", action?.rid)
+        assertEquals("确认删除", action?.confirmText)
+        assertEquals("再想想", action?.cancelText)
     }
 }

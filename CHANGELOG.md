@@ -11,8 +11,8 @@
 - **直播互动与横屏发送**：补齐直播互动链路与横屏发送能力，直播观看中的输入、发送和横屏操作更完整。
 - **评论输入体验增强**：视频评论输入支持 `@` 好友昵称搜索；动态评论楼层可自动展开，小站评论跳转修复，评论链路从输入到定位更顺。
 - **空间动态转发与删除修复**：转发动态改为按 Web 端 `dyn_req` JSON 协议提交，空间页、动态页和动态详情页共享的转发弹窗在失败后会恢复按钮与取消能力；个人空间动态会使用服务端返回的删除菜单参数提交删除请求，删除成功后从列表移除。
-- **个人页动态交互修复**：从动态侧边栏头像进入个人页后，动态卡片三点菜单可正常展开并复制链接；动态图片、图文图片点击后可进入全屏预览。
-- **底栏搜索入口修复**：底栏搜索框展开且搜索词为空时，点击搜索框会进入搜索页，不再停留在无反馈状态；已有输入内容时仍保留键盘搜索提交。
+- **个人页动态交互修复**：从动态侧边栏头像进入个人页后，动态卡片三点菜单可正常展开，支持复制链接与删除自己的动态；动态图片、图文图片点击后可沿用动态页图片预览的展开动画进入全屏预览。
+- **底栏搜索入口修复**：底栏搜索图标点击后直接进入搜索页，不再依赖底栏展开动画完成回调；搜索框展开且搜索词为空时，点击搜索框也会进入搜索页，已有输入内容时仍保留键盘搜索提交；正式版保留底栏搜索、搜索页入口和导航交接相关代码，避免压缩优化破坏点击链路。
 - **追更合集与详情修复**：修复追更合集入口与详情页相关问题，降低从合集入口进入内容时的断链风险。
 - **首页顶部布局设置**：新增首页顶部布局设置，扩展顶部折叠设置，首页顶部可按不同显示偏好调整；顶部标签固定为六项展示并补齐分页、默认展示和超六项回退策略。
 - **顶部标签视觉与交互打磨**：修正顶部标签垂直居中、MD3 顶部标签样式、安卓原生顶部标签指示器、热门子页签切换动效，以及顶部标签长按拖动与点击切换体验。
@@ -43,6 +43,9 @@
 - `./gradlew :app:testDebugUnitTest --tests 'com.android.purebilibili.feature.video.ui.components.CommentInputDialogLayoutPolicyTest' --tests 'com.android.purebilibili.feature.settings.OpenSourceLicensesPolicyTest'`
 - `./gradlew :app:testDebugUnitTest --tests 'com.android.purebilibili.core.network.DynamicApiContractTest'`
 - `./gradlew :app:testDebugUnitTest --tests 'com.android.purebilibili.feature.home.components.BottomBarMiuixStructureTest'`
+- `./gradlew :app:testDebugUnitTest --tests 'com.android.purebilibili.feature.search.SearchScreenPolicyTest'`
+- `./gradlew :app:testDebugUnitTest --tests 'com.android.purebilibili.ReleasePlayerOverlayR8KeepRulesTest'`
+- `./gradlew :app:testDebugUnitTest --tests 'com.android.purebilibili.feature.profile.ProfileSpacePolicyTest' --tests 'com.android.purebilibili.feature.profile.ProfileServicesVisibilityPolicyTest'`
 - `./gradlew :app:compileDebugKotlin`
 - `./gradlew :app:testDebugUnitTest --tests 'com.android.purebilibili.feature.home.HomeFeedSkeletonCardStructureTest' --tests 'com.android.purebilibili.feature.video.ui.components.VideoDetailSkeletonStructureTest'`
 - `./gradlew :app:testDebugUnitTest --tests 'com.android.purebilibili.feature.plugin.CdnRegionPolicyTest' --tests 'com.android.purebilibili.feature.plugin.SponsorBlockPluginPolicyTest' --tests 'com.android.purebilibili.feature.video.viewmodel.PlaybackCdnFallbackPolicyTest' --tests 'com.android.purebilibili.core.network.NetworkClientPolicyTest'`
