@@ -774,11 +774,31 @@ fun AppNavigation(
             isBottomBarVisible = true
         }
 
-        // 进入视频前隐藏，回到底栏目的地立即恢复；动画挂载交给 AnimatedVisibility 处理。
-        LaunchedEffect(currentRoute, activeBottomTabRoute, isBottomBarDestination) {
-            if (isBottomBarDestination) {
-                isBottomBarVisible = true
+        // 进入视频前隐藏，回到底栏目的地统一恢复；视频共享转场返场时只做短延迟，避免底栏抢封面落位。
+        LaunchedEffect(
+            currentRoute,
+            activeBottomTabRoute,
+            isBottomBarDestination,
+            navigation3ReturnSession.isReturningFromDetail,
+            navigation3ReturnSession.isQuickReturnFromDetail,
+            cardTransitionEnabled
+        ) {
+            if (!isBottomBarDestination) return@LaunchedEffect
+            if (
+                shouldDelayBottomBarRevealAfterVideoReturn(
+                    isReturningFromDetail = navigation3ReturnSession.isReturningFromDetail,
+                    isBottomBarDestination = isBottomBarDestination,
+                    cardTransitionEnabled = cardTransitionEnabled
+                )
+            ) {
+                kotlinx.coroutines.delay(
+                    resolveVideoReturnBottomBarRevealDelayMs(
+                        cardTransitionEnabled = cardTransitionEnabled,
+                        isQuickReturnFromDetail = navigation3ReturnSession.isQuickReturnFromDetail
+                    )
+                )
             }
+            isBottomBarVisible = true
         }
         
         // 最终决定是否显示：

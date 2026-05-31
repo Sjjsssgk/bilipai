@@ -1,6 +1,7 @@
 package com.android.purebilibili.navigation
 
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
@@ -108,6 +109,63 @@ class AppNavigationPlaybackPolicyTest {
                 isReturningFromDetail = true,
                 activeBottomTabRoute = VideoRoute.route,
                 cardTransitionEnabled = true
+            )
+        )
+    }
+
+    @Test
+    fun videoReturnBottomBarRevealDelay_onlyAppliesToSharedTransitionReturnToBottomDestination() {
+        assertTrue(
+            shouldDelayBottomBarRevealAfterVideoReturn(
+                isReturningFromDetail = true,
+                isBottomBarDestination = true,
+                cardTransitionEnabled = true
+            )
+        )
+        assertFalse(
+            shouldDelayBottomBarRevealAfterVideoReturn(
+                isReturningFromDetail = false,
+                isBottomBarDestination = true,
+                cardTransitionEnabled = true
+            )
+        )
+        assertFalse(
+            shouldDelayBottomBarRevealAfterVideoReturn(
+                isReturningFromDetail = true,
+                isBottomBarDestination = false,
+                cardTransitionEnabled = true
+            )
+        )
+        assertFalse(
+            shouldDelayBottomBarRevealAfterVideoReturn(
+                isReturningFromDetail = true,
+                isBottomBarDestination = true,
+                cardTransitionEnabled = false
+            )
+        )
+    }
+
+    @Test
+    fun videoReturnBottomBarRevealDelay_usesShortVisualSettleWindow() {
+        assertEquals(
+            0L,
+            resolveVideoReturnBottomBarRevealDelayMs(
+                cardTransitionEnabled = false,
+                isQuickReturnFromDetail = false
+            )
+        )
+        assertEquals(
+            120L,
+            resolveVideoReturnBottomBarRevealDelayMs(
+                cardTransitionEnabled = true,
+                isQuickReturnFromDetail = true
+            )
+        )
+        assertEquals(
+            160L,
+            resolveVideoReturnBottomBarRevealDelayMs(
+                cardTransitionEnabled = true,
+                isQuickReturnFromDetail = false
             )
         )
     }

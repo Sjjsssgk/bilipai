@@ -21,6 +21,24 @@ internal fun shouldDeferBottomBarRevealOnVideoReturn(
     return false
 }
 
+internal fun shouldDelayBottomBarRevealAfterVideoReturn(
+    isReturningFromDetail: Boolean,
+    isBottomBarDestination: Boolean,
+    cardTransitionEnabled: Boolean
+): Boolean {
+    return isReturningFromDetail &&
+        isBottomBarDestination &&
+        cardTransitionEnabled
+}
+
+internal fun resolveVideoReturnBottomBarRevealDelayMs(
+    cardTransitionEnabled: Boolean,
+    isQuickReturnFromDetail: Boolean
+): Long {
+    if (!cardTransitionEnabled) return 0L
+    return if (isQuickReturnFromDetail) 120L else 160L
+}
+
 internal fun shouldPrimeBottomBarHiddenBeforeVideoNavigation(
     sourceRoute: String?,
     visibleBottomBarRoutes: Set<String>,
