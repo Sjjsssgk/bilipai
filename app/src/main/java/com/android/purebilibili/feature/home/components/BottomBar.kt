@@ -3584,19 +3584,19 @@ private fun KernelSuAlignedBottomBar(
                                         itemWidth = indicatorWidth,
                                         label = resolveBottomNavItemLabel(item),
                                         dynamicUnreadCount = dynamicUnreadCount,
-                                        selected = false,
+                                        selected = true,
                                         showIcon = showIcon,
                                         showText = showText,
                                         selectedColor = contentColor,
                                         unselectedColor = contentColor,
                                         contentColorOverride = contentColor,
                                         iconStyle = iconStyle,
-                                        skinIconPath = uiSkinDecoration?.iconPathFor(item, selected = false),
+                                        skinIconPath = uiSkinDecoration?.iconPathFor(item, selected = true),
                                         labelScrimColor = skinContentColors.labelScrimColor,
                                         labelScrimAlpha = skinContentColors.labelScrimAlpha,
                                         onClick = {},
                                         interactive = false,
-                                        selectedIconAlpha = 0f,
+                                        selectedIconAlpha = 1f,
                                         scale = sampledItemScale()
                                     )
                                 }
@@ -3609,7 +3609,7 @@ private fun KernelSuAlignedBottomBar(
                                         itemWidth = indicatorWidth,
                                         label = stringResource(R.string.sidebar_toggle),
                                         dynamicUnreadCount = dynamicUnreadCount,
-                                        selected = false,
+                                        selected = true,
                                         showIcon = showIcon,
                                         showText = showText,
                                         selectedColor = contentColor,
@@ -3620,7 +3620,7 @@ private fun KernelSuAlignedBottomBar(
                                         labelScrimAlpha = skinContentColors.labelScrimAlpha,
                                         onClick = {},
                                         interactive = false,
-                                        selectedIconAlpha = 0f,
+                                        selectedIconAlpha = 1f,
                                         scale = sampledItemScale()
                                     )
                                 }
