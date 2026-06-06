@@ -161,7 +161,6 @@ import com.android.purebilibili.core.store.BottomBarLiquidGlassPreset
 import com.android.purebilibili.core.store.BottomBarSearchAutoExpandMode
 import com.android.purebilibili.core.store.LiquidGlassStyle // [New] Top-level enum
 import com.android.purebilibili.core.store.LiquidGlassMode
-import androidx.compose.foundation.isSystemInDarkTheme // [New] Theme detection for adaptive readability
 import androidx.compose.animation.core.EaseOut
 import androidx.compose.animation.core.FastOutSlowInEasing
 import kotlin.math.sign
@@ -942,7 +941,7 @@ internal fun Modifier.kernelSuFloatingDockSurface(
     materialMotionProgress: Float = 0f,
     materialPressProgress: Float = 0f
 ): Modifier = composed {
-    val isDarkTheme = isSystemInDarkTheme()
+    val isDarkTheme = resolveBottomBarDarkTheme(MaterialTheme.colorScheme.background)
     val materialSpec: BottomBarGlassMaterialSpec = resolveBottomBarGlassMaterialSpec(
         preset = liquidGlassPreset,
         isDarkTheme = isDarkTheme,
@@ -1105,7 +1104,7 @@ internal fun Modifier.kernelSuMiuixFloatingDockSurface(
     materialMotionProgress: Float = 0f,
     materialPressProgress: Float = 0f
 ): Modifier = composed {
-    val isDarkTheme = isSystemInDarkTheme()
+    val isDarkTheme = resolveBottomBarDarkTheme(MiuixTheme.colorScheme.background)
     val useHazeBlur = shouldUseAndroidNativeFloatingHazeBlur(
         glassEnabled = glassEnabled,
         blurEnabled = blurEnabled,
@@ -1301,6 +1300,10 @@ internal fun resolveKernelSuBottomBarContainerColor(darkTheme: Boolean): Color {
         Color.White
     }
     return surfaceContainer.copy(alpha = 0.4f)
+}
+
+internal fun resolveBottomBarDarkTheme(backgroundColor: Color): Boolean {
+    return backgroundColor.luminance() < 0.5f
 }
 
 internal fun resolveBottomBarIdleIndicatorSurfaceColor(
@@ -2245,7 +2248,7 @@ fun FrostedBottomBar(
         val glassEnabled = homeSettings.isBottomBarLiquidGlassEnabled
         val tuning = resolveAndroidNativeBottomBarTuning(
             blurEnabled = glassEnabled || hazeState != null,
-            darkTheme = isSystemInDarkTheme()
+            darkTheme = resolveBottomBarDarkTheme(MaterialTheme.colorScheme.background)
         )
         val containerColor = resolveAndroidNativeFloatingBottomBarContainerColor(
             surfaceColor = MaterialTheme.colorScheme.surfaceContainer,
@@ -2355,7 +2358,7 @@ private fun MaterialBottomBar(
     )
     val androidNativeTuning = resolveAndroidNativeBottomBarTuning(
         blurEnabled = glassEnabled || blurEnabled,
-        darkTheme = isSystemInDarkTheme(),
+        darkTheme = resolveBottomBarDarkTheme(MaterialTheme.colorScheme.background),
         androidNativeVariant = LocalAndroidNativeVariant.current
     )
     val blurIntensity = currentUnifiedBlurIntensity()
@@ -2597,7 +2600,7 @@ private fun MiuixBottomBar(
     )
     val tuning = resolveAndroidNativeBottomBarTuning(
         blurEnabled = glassEnabled || blurEnabled,
-        darkTheme = isSystemInDarkTheme(),
+        darkTheme = resolveBottomBarDarkTheme(MiuixTheme.colorScheme.background),
         androidNativeVariant = AndroidNativeVariant.MIUIX
     )
     val blurIntensity = currentUnifiedBlurIntensity()
@@ -2908,7 +2911,7 @@ private fun KernelSuAlignedBottomBar(
 ) {
     val shellShape = resolveSharedBottomBarCapsuleShape()
     val tabsBackdrop = rememberMiuixLayerBackdrop()
-    val isDarkTheme = isSystemInDarkTheme()
+    val isDarkTheme = resolveBottomBarDarkTheme(MiuixTheme.colorScheme.background)
     val ksuContainerColor = if (glassEnabled) {
         resolveKernelSuBottomBarContainerColor(darkTheme = isDarkTheme)
     } else {

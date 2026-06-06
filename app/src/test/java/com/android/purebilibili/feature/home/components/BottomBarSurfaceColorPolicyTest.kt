@@ -484,6 +484,12 @@ class BottomBarSurfaceColorPolicyTest {
     }
 
     @Test
+    fun `bottom bar theme follows app background instead of system theme`() {
+        assertFalse(resolveBottomBarDarkTheme(Color(0xFFF7F7F7)))
+        assertTrue(resolveBottomBarDarkTheme(Color(0xFF090909)))
+    }
+
+    @Test
     fun `android native idle glass indicator uses ksu neutral overlay in dark mode`() {
         val idleIndicator = resolveAndroidNativeIdleIndicatorSurfaceColor(
             darkTheme = true
