@@ -18,6 +18,7 @@ class HomePagerSyncPolicyTest {
     @Test
     fun pagerToCategorySync_waitsUntilScrollingStops() {
         val shouldSwitch = shouldSwitchHomeCategoryFromPager(
+            isTopLevelActive = true,
             hasSyncedPagerWithState = true,
             pagerCurrentPage = 2,
             pagerScrolling = true,
@@ -30,6 +31,7 @@ class HomePagerSyncPolicyTest {
     @Test
     fun pagerToCategorySync_requiresInitialSync() {
         val shouldSwitch = shouldSwitchHomeCategoryFromPager(
+            isTopLevelActive = true,
             hasSyncedPagerWithState = false,
             pagerCurrentPage = 2,
             pagerScrolling = false,
@@ -42,6 +44,7 @@ class HomePagerSyncPolicyTest {
     @Test
     fun pagerToCategorySync_switchesOnlyWhenSettledPageDiffers() {
         val shouldSwitch = shouldSwitchHomeCategoryFromPager(
+            isTopLevelActive = true,
             hasSyncedPagerWithState = true,
             pagerCurrentPage = 2,
             pagerScrolling = false,
@@ -52,8 +55,22 @@ class HomePagerSyncPolicyTest {
     }
 
     @Test
+    fun pagerToCategorySync_pausesWhileVideoDetailCoversHome() {
+        val shouldSwitch = shouldSwitchHomeCategoryFromPager(
+            isTopLevelActive = false,
+            hasSyncedPagerWithState = true,
+            pagerCurrentPage = 1,
+            pagerScrolling = false,
+            currentCategoryIndex = 2
+        )
+
+        assertFalse(shouldSwitch)
+    }
+
+    @Test
     fun pagerToCategorySync_waitsDuringProgrammaticPageSwitch() {
         val shouldSwitch = shouldSwitchHomeCategoryFromPager(
+            isTopLevelActive = true,
             hasSyncedPagerWithState = true,
             pagerCurrentPage = 0,
             pagerScrolling = false,
@@ -67,6 +84,7 @@ class HomePagerSyncPolicyTest {
     @Test
     fun pagerSettledAction_switchesCategory_whenSettledCategoryIsLive() {
         val action = resolveHomePagerSettledAction(
+            isTopLevelActive = true,
             hasSyncedPagerWithState = true,
             pagerCurrentPage = 2,
             pagerScrolling = false,
@@ -86,6 +104,7 @@ class HomePagerSyncPolicyTest {
     @Test
     fun pagerSettledAction_switchesCategory_forRegularSettledCategory() {
         val action = resolveHomePagerSettledAction(
+            isTopLevelActive = true,
             hasSyncedPagerWithState = true,
             pagerCurrentPage = 2,
             pagerScrolling = false,
@@ -99,6 +118,7 @@ class HomePagerSyncPolicyTest {
     @Test
     fun pagerSettledAction_isNone_whenPagerShouldNotSync() {
         val action = resolveHomePagerSettledAction(
+            isTopLevelActive = true,
             hasSyncedPagerWithState = true,
             pagerCurrentPage = 1,
             pagerScrolling = false,
@@ -112,6 +132,7 @@ class HomePagerSyncPolicyTest {
     @Test
     fun pagerSettledAction_isNone_duringProgrammaticPageSwitch() {
         val action = resolveHomePagerSettledAction(
+            isTopLevelActive = true,
             hasSyncedPagerWithState = true,
             pagerCurrentPage = 0,
             pagerScrolling = false,

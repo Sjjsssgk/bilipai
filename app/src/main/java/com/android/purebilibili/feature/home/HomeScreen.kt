@@ -383,7 +383,14 @@ fun HomeScreen(
     )
 
     // [修复] 仅在完成首次“状态->Pager”对齐后，才允许“Pager->状态”反向同步，避免返回首页时误跳分类。
-    LaunchedEffect(pagerState, topTabEntries, hasSyncedPagerWithState, currentCategory) {
+    LaunchedEffect(
+        pagerState,
+        topTabEntries,
+        hasSyncedPagerWithState,
+        currentCategory,
+        isTopLevelActive
+    ) {
+        if (!isTopLevelActive) return@LaunchedEffect
         if (!hasSyncedPagerWithState) return@LaunchedEffect
         snapshotFlow { pagerState.currentPage to pagerState.isScrollInProgress }
             .distinctUntilChanged()
@@ -397,6 +404,7 @@ fun HomeScreen(
                 val settledEntry = resolveHomeTopTabEntryOrNull(topTabEntries, page)
                 val settledCategory = (settledEntry as? HomeTopTabEntry.Category)?.category
                 when (resolveHomePagerSettledAction(
+                        isTopLevelActive = isTopLevelActive,
                         hasSyncedPagerWithState = hasSyncedPagerWithState,
                         pagerCurrentPage = page,
                         pagerScrolling = scrolling,
@@ -411,6 +419,14 @@ fun HomeScreen(
                     }
                 }
             }
+    }
+
+    // 详情页覆盖首页期间 Pager 可能受导航过渡影响；返回后必须先由业务状态重新对齐。
+    LaunchedEffect(isTopLevelActive) {
+        if (!isTopLevelActive) {
+            hasSyncedPagerWithState = false
+            lastDrivenPagerCategory = null
+        }
     }
 
     // [P2] 当前分类被隐藏时，自动落到首个可见分类
@@ -433,7 +449,8 @@ fun HomeScreen(
     }
 
     // [修复] 状态变化时驱动 Pager：首次使用无动画对齐，后续用动画跟随
-    LaunchedEffect(currentCategory, topTabEntries) {
+    LaunchedEffect(currentCategory, topTabEntries, isTopLevelActive) {
+        if (!isTopLevelActive) return@LaunchedEffect
         val targetPage = topTabEntries.indexOf(HomeTopTabEntry.Category(currentCategory))
         if (targetPage < 0) return@LaunchedEffect
         if (shouldUseInitialHomePagerSnap(

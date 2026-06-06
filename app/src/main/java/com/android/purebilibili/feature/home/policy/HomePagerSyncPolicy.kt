@@ -17,12 +17,14 @@ internal fun shouldDisplayHomeTopCategoryInline(category: HomeCategory?): Boolea
 }
 
 internal fun shouldSwitchHomeCategoryFromPager(
+    isTopLevelActive: Boolean,
     hasSyncedPagerWithState: Boolean,
     pagerCurrentPage: Int,
     pagerScrolling: Boolean,
     currentCategoryIndex: Int,
     programmaticPageSwitchInProgress: Boolean = false
 ): Boolean {
+    if (!isTopLevelActive) return false
     if (!hasSyncedPagerWithState) return false
     if (pagerScrolling) return false
     if (programmaticPageSwitchInProgress) return false
@@ -30,6 +32,7 @@ internal fun shouldSwitchHomeCategoryFromPager(
 }
 
 internal fun resolveHomePagerSettledAction(
+    isTopLevelActive: Boolean,
     hasSyncedPagerWithState: Boolean,
     pagerCurrentPage: Int,
     pagerScrolling: Boolean,
@@ -38,6 +41,7 @@ internal fun resolveHomePagerSettledAction(
     programmaticPageSwitchInProgress: Boolean = false
 ): HomePagerSettledAction {
     if (!shouldSwitchHomeCategoryFromPager(
+            isTopLevelActive = isTopLevelActive,
             hasSyncedPagerWithState = hasSyncedPagerWithState,
             pagerCurrentPage = pagerCurrentPage,
             pagerScrolling = pagerScrolling,
