@@ -218,7 +218,8 @@ private fun shouldHoldPendingSeekPosition(
             playerPositionMs < targetPositionMs - toleranceMs
         targetPositionMs < originPositionMs ->
             playerPositionMs > targetPositionMs + toleranceMs
-        else -> true
+        // 采样原点与提交目标相同时无法可靠判断方向，继续锁定会让进度条永久停在目标值。
+        else -> false
     }
 }
 

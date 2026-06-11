@@ -230,6 +230,29 @@ class PlaybackSeekControllerTest {
     }
 
     @Test
+    fun sameOriginPendingSeek_doesNotFreezeSliderAfterPlaybackMoves() {
+        val commitResult = finishPlaybackSeekInteraction(
+            updatePlaybackSeekInteraction(
+                state = startPlaybackSeekInteraction(
+                    state = syncPlaybackSeekSession(
+                        state = PlaybackSeekSessionState(),
+                        playbackPositionMs = 25_000L
+                    )
+                ),
+                positionMs = 25_000L
+            )
+        )
+
+        val synced = syncPlaybackSeekSession(
+            state = commitResult.state,
+            playbackPositionMs = 26_000L
+        )
+
+        assertEquals(26_000L, synced.sliderPositionMs)
+        assertNull(synced.pendingSeekPositionMs)
+    }
+
+    @Test
     fun cancelSeek_restoresLastPlaybackPosition() {
         val draggingState = updatePlaybackSeekInteraction(
             state = startPlaybackSeekInteraction(
