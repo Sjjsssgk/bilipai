@@ -291,6 +291,8 @@ internal fun resolveBiliPaiNavEntryRouteTransitions(
         sourceMetadata.sourceRoute == key.sourceRoute &&
         sourceMetadata.sourceKey == "${sourceMetadata.sourceRoute}:${key.bvid}"
     val sharedReadyVideoPush = recordedMatchingVideoSource &&
+        sourceMetadata.sharedTransitionEntryReady
+    val directionalVideoPushReady = recordedMatchingVideoSource &&
         sourceMetadata.sharedTransitionReady
     val sharedReadyFavoriteCollection =
         key is BiliPaiNavKey.SeasonSeriesDetail && key.sharedElementTransition
@@ -298,7 +300,7 @@ internal fun resolveBiliPaiNavEntryRouteTransitions(
         cardTransitionEnabled && sharedReadyFavoriteCollection ->
             BiliPaiNavRouteTransition.NO_OP_SHARED_ELEMENT
         cardTransitionEnabled && sharedReadyVideoPush -> BiliPaiNavRouteTransition.NO_OP_SHARED_ELEMENT
-        !cardTransitionEnabled && sharedReadyVideoPush ->
+        !cardTransitionEnabled && directionalVideoPushReady ->
             resolveCardDisabledVideoForwardTransition(sourceMetadata.cardSourceDirection)
                 ?: BiliPaiNavRouteTransition.FALLBACK
         else -> BiliPaiNavRouteTransition.FALLBACK

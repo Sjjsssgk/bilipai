@@ -13,6 +13,9 @@ internal data class BiliPaiNavSourceMetadata(
     val cardFullyVisible: Boolean = false,
     val cardSourceDirection: BiliPaiNavCardSourceDirection = BiliPaiNavCardSourceDirection.NONE
 ) {
+    val sharedTransitionEntryReady: Boolean
+        get() = clickedBoundsRecorded
+
     val sharedTransitionReady: Boolean
         get() = clickedBoundsRecorded && cardFullyVisible
 }

@@ -16,6 +16,7 @@ class BiliPaiNavSourceMetadataPolicyTest {
             cardFullyVisible = true
         )
 
+        assertTrue(metadata.sharedTransitionEntryReady)
         assertTrue(metadata.sharedTransitionReady)
         assertEquals("home", metadata.sourceRoute)
         assertEquals("home:BV1", metadata.sourceKey)
@@ -29,16 +30,24 @@ class BiliPaiNavSourceMetadataPolicyTest {
                 sourceRoute = "home",
                 clickedBoundsRecorded = false,
                 cardFullyVisible = true
-            ).sharedTransitionReady
+            ).sharedTransitionEntryReady
         )
         assertFalse(
             BiliPaiNavSourceMetadata(
                 sourceKey = "home:BV1",
                 sourceRoute = "home",
-                clickedBoundsRecorded = true,
-                cardFullyVisible = false
+                clickedBoundsRecorded = false,
+                cardFullyVisible = true
             ).sharedTransitionReady
         )
+        val partiallyVisibleCard = BiliPaiNavSourceMetadata(
+            sourceKey = "home:BV1",
+            sourceRoute = "home",
+            clickedBoundsRecorded = true,
+            cardFullyVisible = false
+        )
+        assertTrue(partiallyVisibleCard.sharedTransitionEntryReady)
+        assertFalse(partiallyVisibleCard.sharedTransitionReady)
     }
 
     @Test
@@ -52,6 +61,7 @@ class BiliPaiNavSourceMetadataPolicyTest {
 
         assertEquals("home", metadata.sourceRoute)
         assertEquals("home:BV1", metadata.sourceKey)
+        assertTrue(metadata.sharedTransitionEntryReady)
         assertTrue(metadata.sharedTransitionReady)
     }
 }

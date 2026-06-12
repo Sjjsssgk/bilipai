@@ -95,6 +95,25 @@ class BiliPaiNavEntryProviderPolicyTest {
     }
 
     @Test
+    fun seasonDetailVideoPushNearHeaderStillUsesSharedElementRouteLayer() {
+        val sourceRoute = "season_series_detail/favorite_season/1324105"
+        val transitions = resolveBiliPaiNavEntryRouteTransitions(
+            key = BiliPaiNavKey.VideoDetail(bvid = "BV1", sourceRoute = sourceRoute),
+            cardTransitionEnabled = true,
+            sourceMetadata = BiliPaiNavSourceMetadata(
+                sourceKey = "$sourceRoute:BV1",
+                sourceRoute = sourceRoute,
+                clickedBoundsRecorded = true,
+                cardFullyVisible = false
+            )
+        )
+
+        assertEquals(BiliPaiNavRouteTransition.NO_OP_SHARED_ELEMENT, transitions.forward)
+        assertEquals(BiliPaiNavRouteTransition.FALLBACK, transitions.pop)
+        assertEquals(BiliPaiNavRouteTransition.FALLBACK, transitions.predictivePop)
+    }
+
+    @Test
     fun homeVideoPushWithDisabledSharedTransitionUsesLeftSourceFallback() {
         val transitions = resolveBiliPaiNavEntryRouteTransitions(
             key = BiliPaiNavKey.VideoDetail(bvid = "BV1", sourceRoute = "home"),
