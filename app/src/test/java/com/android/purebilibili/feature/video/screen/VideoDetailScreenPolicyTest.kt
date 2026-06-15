@@ -59,17 +59,14 @@ class VideoDetailScreenPolicyTest {
     }
 
     @Test
-    fun secondaryNavigationCallbacks_markExternalNavigationLeaveBeforeRouting() {
+    fun secondaryNavigationCallbacks_deferPlaybackExitToNavigationLayer() {
         val source = File("src/main/java/com/android/purebilibili/feature/video/screen/VideoDetailScreen.kt")
             .readText()
         val userSpaceSource = source.substringAfter("val navigateToUserSpaceFromVideo")
             .substringBefore("val navigateToSearchFromVideo")
 
-        assertTrue(
-            userSpaceSource.contains("markSecondaryNavigationLeave()") &&
-                userSpaceSource.indexOf("markSecondaryNavigationLeave()") <
-                userSpaceSource.indexOf("onUpClick(mid)")
-        )
+        assertFalse(userSpaceSource.contains("markSecondaryNavigationLeave"))
+        assertTrue(userSpaceSource.contains("onUpClick(mid)"))
     }
 
     @Test

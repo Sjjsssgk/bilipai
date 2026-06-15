@@ -1166,17 +1166,14 @@ fun VideoDetailScreen(
     }
 
     val navigateToUserSpaceFromVideo: (Long) -> Unit = { mid ->
-        markSecondaryNavigationLeave()
         onUpClick(mid)
     }
 
     val navigateToSearchFromVideo: () -> Unit = {
-        markSecondaryNavigationLeave()
         onNavigateToSearch()
     }
 
     val navigateToSearchKeywordFromVideo: (String) -> Unit = { keyword ->
-        markSecondaryNavigationLeave()
         onSearchKeywordClick(keyword)
     }
 

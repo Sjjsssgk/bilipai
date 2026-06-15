@@ -324,19 +324,29 @@ class BackgroundPlaybackPolicyTest {
         assertTrue(
             shouldClearVideoSurfaceOnEnterBackground(
                 shouldDisableVideoTrack = true,
-                shouldContinueBackgroundAudio = true
+                shouldContinueBackgroundAudio = true,
+                wasPlaybackActive = true
             )
         )
         assertFalse(
             shouldClearVideoSurfaceOnEnterBackground(
                 shouldDisableVideoTrack = true,
-                shouldContinueBackgroundAudio = false
+                shouldContinueBackgroundAudio = false,
+                wasPlaybackActive = true
             )
         )
         assertFalse(
             shouldClearVideoSurfaceOnEnterBackground(
                 shouldDisableVideoTrack = false,
-                shouldContinueBackgroundAudio = true
+                shouldContinueBackgroundAudio = true,
+                wasPlaybackActive = true
+            )
+        )
+        assertFalse(
+            shouldClearVideoSurfaceOnEnterBackground(
+                shouldDisableVideoTrack = true,
+                shouldContinueBackgroundAudio = true,
+                wasPlaybackActive = false
             )
         )
     }

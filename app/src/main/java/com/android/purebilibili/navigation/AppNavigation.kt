@@ -1376,6 +1376,9 @@ fun AppNavigation(
                                 onBack = { performSystemBackAction() },
                                 onOpenTrending = { pushNavigation3Key(BiliPaiNavKey.SearchTrending) },
                                 onVideoClick = { bvid, cid -> navigateToVideoInNavigation3(bvid, cid, "") },
+                                onWebClick = { url, title ->
+                                    pushNavigation3Route(ScreenRoutes.Web.createRoute(url, title))
+                                },
                                 onUpClick = { mid -> pushNavigation3Route(ScreenRoutes.Space.createRoute(mid)) },
                                 onBangumiClick = { seasonId ->
                                     if (seasonId > 0L) {

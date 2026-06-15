@@ -220,6 +220,17 @@ class VideoInfoDisplayPolicyTest {
     }
 
     @Test
+    fun compactPublishTimeRow_neverAppendsPreciseTimeForCards() {
+        assertEquals(
+            "发布于 3天前",
+            resolveCompactPublishTimeRowText(
+                pubdate = 1_709_006_400L,
+                nowMs = 1_709_265_600_000L
+            )
+        )
+    }
+
+    @Test
     fun videoDetailOnlineCountTextRequiresSettingAndLoadedValue() {
         assertEquals(
             "123人正在看",

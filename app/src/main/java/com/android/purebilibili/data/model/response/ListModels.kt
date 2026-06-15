@@ -203,7 +203,9 @@ data class VideoItem(
     val collectionMediaCount: Int = 0,
     val collectionSubtitle: String = "",
     val rights: VideoRights? = null,
-    val recommendationFeedback: RecommendationFeedbackMetadata? = null
+    val recommendationFeedback: RecommendationFeedbackMetadata? = null,
+    val contentType: String = "",
+    val navigationUrl: String = ""
 )
 
 @Serializable

@@ -88,6 +88,42 @@ class SearchModelsParsingTest {
     }
 
     @Test
+    fun decodeSearchResponse_preservesClassroomNavigationFields() {
+        val payload = """
+            {
+              "code": 0,
+              "data": {
+                "result": [
+                  {
+                    "result_type": "video",
+                    "data": [
+                      {
+                        "type": "ketang",
+                        "id": 37632,
+                        "bvid": "",
+                        "arcurl": "https://www.bilibili.com/cheese/play/ss37632",
+                        "title": "系统课程"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+        """.trimIndent()
+
+        val video = json.decodeFromString<SearchResponse>(payload)
+            .data
+            ?.result
+            ?.first()
+            ?.data
+            ?.first()
+            ?.toVideoItem()
+
+        assertEquals("ketang", video?.contentType)
+        assertEquals("https://www.bilibili.com/cheese/play/ss37632", video?.navigationUrl)
+    }
+
+    @Test
     fun decodeSearchArticleResponse_cleansHtmlAndProtocolRelativeImages() {
         val payload = """
             {

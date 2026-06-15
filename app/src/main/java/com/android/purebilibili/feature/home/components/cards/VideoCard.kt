@@ -80,8 +80,7 @@ import com.android.purebilibili.feature.home.HomeGlassResolvedColors
 import com.android.purebilibili.feature.home.resolveHomeGlassCoverPillBaseColor
 import com.android.purebilibili.feature.home.resolveHomeGlassPillStyle
 import com.android.purebilibili.feature.video.controller.PlaybackProgressManager
-import com.android.purebilibili.feature.video.ui.section.resolvePublishTimeRowText
-import com.android.purebilibili.feature.video.ui.section.shouldEmphasizePrecisePublishTime
+import com.android.purebilibili.feature.video.ui.section.resolveCompactPublishTimeRowText
 //  [预览播放] 相关引用已移除
 
 // 显式导入 collectAsState 以避免 ambiguity 或 missing reference
@@ -460,18 +459,11 @@ fun ElegantVideoCard(
     )
     val publishTimeRowText: String
     val emphasizePublishTime: Boolean
-    remember(showPublishTime, video.pubdate, video.title) {
+    remember(showPublishTime, video.pubdate) {
         if (!showPublishTime) {
             "" to false
         } else {
-            resolvePublishTimeRowText(
-                pubdate = video.pubdate,
-                partitionName = "",
-                title = video.title
-            ) to shouldEmphasizePrecisePublishTime(
-                partitionName = "",
-                title = video.title
-            )
+            resolveCompactPublishTimeRowText(pubdate = video.pubdate) to false
         }
     }.let { (text, emphasize) ->
         publishTimeRowText = text
@@ -1208,6 +1200,7 @@ fun ElegantVideoCard(
                 badgeTextColor = metadataColors.upBadgeTextColor,
                 badgeBackgroundColor = metadataColors.upBadgeBackgroundColor,
                 reserveTrailingSlot = true,
+                trailingSlotMinHeight = 20.dp,
                 showUpBadge = showUpBadge,
                 modifier = upNameModifier
             )

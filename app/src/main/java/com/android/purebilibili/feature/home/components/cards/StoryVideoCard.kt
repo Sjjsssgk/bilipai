@@ -60,8 +60,7 @@ import com.android.purebilibili.core.ui.transition.shouldEnableVideoCoverSharedT
 import com.android.purebilibili.core.ui.transition.shouldEnableVideoMetadataSharedTransition
 import com.android.purebilibili.core.ui.transition.videoCoverSharedElementKey
 import com.android.purebilibili.feature.home.resolveHomeCardEnterAnimationEnabledAtMount
-import com.android.purebilibili.feature.video.ui.section.resolvePublishTimeRowText
-import com.android.purebilibili.feature.video.ui.section.shouldEmphasizePrecisePublishTime
+import com.android.purebilibili.feature.video.ui.section.resolveCompactPublishTimeRowText
 import io.github.alexzhirkevich.cupertino.icons.CupertinoIcons
 import io.github.alexzhirkevich.cupertino.icons.outlined.*
 import kotlin.math.roundToInt
@@ -139,23 +138,14 @@ fun StoryVideoCard(
             useLowQuality = useLowQualityCover
         )
     }
-    val publishTimeRowText = remember(showPublishTime, video.pubdate, video.title) {
+    val publishTimeRowText = remember(showPublishTime, video.pubdate) {
         if (!showPublishTime) {
             ""
         } else {
-            resolvePublishTimeRowText(
-                pubdate = video.pubdate,
-                partitionName = "",
-                title = video.title
-            )
+            resolveCompactPublishTimeRowText(pubdate = video.pubdate)
         }
     }
-    val emphasizePublishTime = remember(showPublishTime, video.title) {
-        showPublishTime && shouldEmphasizePrecisePublishTime(
-            partitionName = "",
-            title = video.title
-        )
-    }
+    val emphasizePublishTime = false
     
     //  [新增] 长按删除菜单状态
     var showDismissMenu by remember { mutableStateOf(false) }

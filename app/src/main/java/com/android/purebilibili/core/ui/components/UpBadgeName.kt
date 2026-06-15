@@ -36,6 +36,7 @@ fun UpBadgeName(
     spacing: Dp = 6.dp,
     reserveTrailingSlot: Boolean = false,
     trailingSlotMinWidth: Dp = 40.dp,
+    trailingSlotMinHeight: Dp = 0.dp,
     showUpBadge: Boolean = true,
     maxLines: Int = 1,
     overflow: TextOverflow = TextOverflow.Ellipsis
@@ -88,7 +89,9 @@ fun UpBadgeName(
             if (shouldRenderTrailingSlot) {
                 Spacer(modifier = Modifier.width(spacing))
                 Box(
-                    modifier = Modifier.widthIn(min = trailingSlotMinWidth),
+                    modifier = Modifier
+                        .widthIn(min = trailingSlotMinWidth)
+                        .heightIn(min = trailingSlotMinHeight),
                     contentAlignment = Alignment.CenterStart
                 ) {
                     badgeTrailingContent?.invoke()

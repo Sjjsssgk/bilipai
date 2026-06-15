@@ -128,9 +128,11 @@ data class SearchTypeData(
 
 @Serializable
 data class SearchVideoItem(
+    val type: String = "",
     @Serializable(with = FlexibleLongSerializer::class)
     val id: Long = 0,
     val bvid: String = "",
+    val arcurl: String = "",
     val title: String = "",
     val pic: String = "",
     val author: String = "",
@@ -164,7 +166,9 @@ data class SearchVideoItem(
             stat = Stat(view = play, danmaku = video_review),
             duration = parseDuration(duration),
             //  传递发布时间
-            pubdate = pubdate
+            pubdate = pubdate,
+            contentType = type,
+            navigationUrl = arcurl
         )
     }
 

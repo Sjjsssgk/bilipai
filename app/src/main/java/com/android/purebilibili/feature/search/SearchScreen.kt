@@ -432,6 +432,7 @@ fun SearchScreen(
     onBack: () -> Unit,
     onOpenTrending: () -> Unit,
     onVideoClick: (String, Long) -> Unit,
+    onWebClick: (String, String) -> Unit,
     onUpClick: (Long) -> Unit,  //  点击UP主跳转到空间
     onBangumiClick: (Long) -> Unit, //  点击番剧/影视跳转详情
     onLiveClick: (Long, String, String) -> Unit, // [新增] 直播点击
@@ -795,8 +796,27 @@ fun SearchScreen(
                                             showOnlineCount = showOnlineCount,
                                             modifier = Modifier,
                                             //  [交互优化] 传递 onWatchLater 用于显示菜单选项
-                                            onWatchLater = { viewModel.addToWatchLater(video.bvid, video.id) },
-                                            onClick = { bvid, _ -> onVideoClick(bvid, 0) }
+                                            onWatchLater = if (video.bvid.isNotBlank()) {
+                                                { viewModel.addToWatchLater(video.bvid, video.id) }
+                                            } else {
+                                                null
+                                            },
+                                            onClick = { _, _ ->
+                                                when (
+                                                    val target = resolveVideoSearchNavigationTarget(
+                                                        bvid = video.bvid,
+                                                        contentType = video.contentType,
+                                                        navigationUrl = video.navigationUrl,
+                                                        title = video.title
+                                                    )
+                                                ) {
+                                                    is SearchResultNavigationTarget.Video ->
+                                                        onVideoClick(target.bvid, 0)
+                                                    is SearchResultNavigationTarget.Web ->
+                                                        onWebClick(target.url, target.title)
+                                                    else -> Unit
+                                                }
+                                            }
                                         )
                                         
                                         //  [新增] 无限滚动触发：当滚动到最后几个 item 时加载更多
@@ -1190,7 +1210,7 @@ fun SearchScreen(
                                                 )) {
                                                     is SearchResultNavigationTarget.LiveRoom -> onLiveClick(target.roomId, target.title, target.uname)
                                                     is SearchResultNavigationTarget.Space -> onUpClick(target.mid)
-                                                    SearchResultNavigationTarget.None -> Unit
+                                                    else -> Unit
                                                 }
                                             }
                                         )

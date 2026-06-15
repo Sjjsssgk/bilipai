@@ -123,6 +123,18 @@ internal fun resolvePublishTimeRowText(
     }
 }
 
+internal fun resolveCompactPublishTimeRowText(
+    pubdate: Long,
+    nowMs: Long = System.currentTimeMillis()
+): String {
+    if (pubdate <= 0L) return ""
+    val relativeText = FormatUtils.formatPublishTime(
+        timestampSeconds = pubdate,
+        nowMs = nowMs
+    )
+    return relativeText.takeIf { it.isNotBlank() }?.let { "发布于 $it" }.orEmpty()
+}
+
 internal fun resolveDynamicPublishTimeRowText(
     publishTs: Long,
     title: String,

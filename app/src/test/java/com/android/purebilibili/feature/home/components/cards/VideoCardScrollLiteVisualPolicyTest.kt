@@ -152,4 +152,15 @@ class VideoCardScrollLiteVisualPolicyTest {
         assertEquals(onSurface.copy(alpha = 0.10f), colors.upBadgeBackgroundColor)
         assertEquals(onSurface.copy(alpha = 0.72f), colors.publishTimeColor)
     }
+
+    @Test
+    fun `home video card reserves followed badge height to align publish rows`() {
+        val cardSource = File("src/main/java/com/android/purebilibili/feature/home/components/cards/VideoCard.kt")
+            .readText()
+        val upBadgeSource = File("src/main/java/com/android/purebilibili/core/ui/components/UpBadgeName.kt")
+            .readText()
+
+        assertTrue(cardSource.contains("trailingSlotMinHeight = 20.dp"))
+        assertTrue(upBadgeSource.contains(".heightIn(min = trailingSlotMinHeight)"))
+    }
 }

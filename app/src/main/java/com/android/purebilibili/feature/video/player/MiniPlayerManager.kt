@@ -182,9 +182,10 @@ internal fun shouldDisableVideoTrackOnEnterBackground(
 
 internal fun shouldClearVideoSurfaceOnEnterBackground(
     shouldDisableVideoTrack: Boolean,
-    shouldContinueBackgroundAudio: Boolean
+    shouldContinueBackgroundAudio: Boolean,
+    wasPlaybackActive: Boolean
 ): Boolean {
-    return shouldDisableVideoTrack && shouldContinueBackgroundAudio
+    return shouldDisableVideoTrack && shouldContinueBackgroundAudio && wasPlaybackActive
 }
 
 internal fun shouldTrimDanmakuCachesOnEnterBackground(
@@ -719,7 +720,8 @@ class MiniPlayerManager private constructor(private val context: Context) :
         }
         if (shouldClearVideoSurfaceOnEnterBackground(
                 shouldDisableVideoTrack = shouldDisableVideoTrack,
-                shouldContinueBackgroundAudio = shouldKeepBackgroundAudio
+                shouldContinueBackgroundAudio = shouldKeepBackgroundAudio,
+                wasPlaybackActive = foregroundResumeIntent
             )
         ) {
             currentPlayer.clearVideoSurface()
