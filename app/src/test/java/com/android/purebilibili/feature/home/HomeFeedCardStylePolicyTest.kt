@@ -18,12 +18,12 @@ class HomeFeedCardStylePolicyTest {
     }
 
     @Test
-    fun officialStyle_usesFourByThreeAndCompactSpacing() {
+    fun officialStyle_usesFourByThreeWithBalancedHorizontalSpacing() {
         val layout = resolveHomeFeedCardLayout(HomeFeedCardStyle.OFFICIAL)
 
         assertEquals(4f / 3f, layout.coverAspectRatio)
-        assertEquals(0, layout.outerPaddingDp)
-        assertEquals(4, layout.itemSpacingDp)
+        assertEquals(8, layout.outerPaddingDp)
+        assertEquals(8, layout.itemSpacingDp)
         assertEquals(0, layout.storyCardHorizontalPaddingDp)
         assertEquals(true, layout.compactMetadata)
     }

@@ -22,8 +22,8 @@ internal fun resolveHomeFeedCardLayout(style: HomeFeedCardStyle): HomeFeedCardLa
 
         HomeFeedCardStyle.OFFICIAL -> HomeFeedCardLayout(
             coverAspectRatio = 4f / 3f,
-            outerPaddingDp = 0,
-            itemSpacingDp = 4,
+            outerPaddingDp = 8,
+            itemSpacingDp = 8,
             storyCardHorizontalPaddingDp = 0,
             compactMetadata = true
         )
