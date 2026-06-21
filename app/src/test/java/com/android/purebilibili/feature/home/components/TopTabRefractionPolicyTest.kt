@@ -198,6 +198,45 @@ class TopTabRefractionPolicyTest {
     }
 
     @Test
+    fun `pager sliding uses full bottom bar stretch progress`() {
+        assertEquals(
+            1f,
+            resolveTopTabIndicatorScaleProgress(
+                pagerSliding = true,
+                dragScaleProgress = 0.2f,
+                pressProgress = 0f
+            ),
+            0.001f
+        )
+        assertEquals(
+            0.6f,
+            resolveTopTabIndicatorScaleProgress(
+                pagerSliding = false,
+                dragScaleProgress = 0.2f,
+                pressProgress = 0.6f
+            ),
+            0.001f
+        )
+    }
+
+    @Test
+    fun `top tab velocity deformation matches bottom bar in both directions`() {
+        listOf(-6f, 6f).forEach { velocity ->
+            val top = resolveTopTabIndicatorLayerTransform(
+                motionProgress = 1f,
+                velocityItemsPerSecond = velocity
+            )
+            val bottom = resolveBottomBarIndicatorLayerTransform(
+                motionProgress = 1f,
+                velocityItemsPerSecond = velocity
+            )
+
+            assertEquals(bottom.scaleX, top.scaleX, 0.001f)
+            assertEquals(bottom.scaleY, top.scaleY, 0.001f)
+        }
+    }
+
+    @Test
     fun `top tab indicator deformation ignores vertical page scrolling`() {
         assertFalse(
             shouldDeformTopTabIndicator(

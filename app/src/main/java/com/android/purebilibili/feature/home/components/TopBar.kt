@@ -954,12 +954,21 @@ private fun LightweightHomeTopTabs(
             scaleX = topTabDragState.scaleX,
             scaleY = topTabDragState.scaleY
         )
+        val topTabIndicatorLayerScaleProgress = resolveTopTabIndicatorScaleProgress(
+            pagerSliding = !topTabDragActive && topTabShouldStretchIndicator,
+            dragScaleProgress = topTabIndicatorDragScaleProgress,
+            pressProgress = topTabPressProgress
+        )
         val topTabIndicatorLayerTransform = resolveBottomBarIndicatorLayerTransform(
             motionProgress = topTabPressProgress,
             velocityItemsPerSecond = topTabMotionVelocityItemsPerSecond,
             isDragging = topTabShouldStretchIndicator,
-            dragScaleProgress = topTabIndicatorDragScaleProgress,
-            dragScaleTransform = topTabIndicatorLayerScaleTransform,
+            dragScaleProgress = topTabIndicatorLayerScaleProgress,
+            dragScaleTransform = if (topTabDragActive) {
+                topTabIndicatorLayerScaleTransform
+            } else {
+                null
+            },
             motionSpec = topTabDragMotionSpec
         )
         val topTabRefractionMotionProfile = resolveBottomBarRefractionMotionProfile(
@@ -972,10 +981,6 @@ private fun LightweightHomeTopTabs(
             pressProgress = topTabPressProgress,
             refractionProgress = topTabRefractionMotionProfile.progress,
             tapPressRefractionEnabled = true
-        )
-        val topTabIndicatorLayerScaleProgress = maxOf(
-            topTabIndicatorDragScaleProgress,
-            topTabPressProgress
         )
         val topTabPanelOffsetPx by remember(density, itemWidth, topTabDragState, topTabDragMotionSpec) {
             derivedStateOf {
@@ -1986,6 +1991,15 @@ internal fun resolveTopTabIndicatorLayerTransform(
         motionSpec = motionSpec
     )
     return bottomBarTransform
+}
+
+internal fun resolveTopTabIndicatorScaleProgress(
+    pagerSliding: Boolean,
+    dragScaleProgress: Float,
+    pressProgress: Float
+): Float {
+    if (pagerSliding) return 1f
+    return maxOf(dragScaleProgress, pressProgress).coerceIn(0f, 1f)
 }
 
 internal fun resolveTopTabNeutralIndicatorColor(
