@@ -23,7 +23,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.gestures.awaitLongPressOrCancellation
+import androidx.compose.foundation.gestures.awaitHorizontalTouchSlopOrCancellation
 import androidx.compose.foundation.gestures.horizontalDrag
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.BorderStroke
@@ -1329,7 +1329,7 @@ private fun LightweightHomeTopTabs(
                             Modifier
                         }
                         val gestureItemModifier = if (index == safeSelectedIndex) {
-                            measuredItemModifier.topTabSelectedItemLongPressDrag(
+                            measuredItemModifier.topTabSelectedItemDrag(
                                 dragState = topTabDragState,
                                 itemWidthPx = with(density) { itemWidth.toPx() },
                                 itemCount = categories.size,
@@ -1862,7 +1862,7 @@ internal fun shouldStartTopTabIndicatorLongPressDrag(
     return pointerX in indicatorLeftPx..(indicatorLeftPx + indicatorWidthPx)
 }
 
-private fun Modifier.topTabSelectedItemLongPressDrag(
+private fun Modifier.topTabSelectedItemDrag(
     dragState: DampedDragAnimationState,
     itemWidthPx: Float,
     itemCount: Int,
@@ -1876,16 +1876,18 @@ private fun Modifier.topTabSelectedItemLongPressDrag(
     awaitPointerEventScope {
         while (true) {
             val down = awaitFirstDown(requireUnconsumed = false)
-            val longPress = awaitLongPressOrCancellation(down.id) ?: continue
-            longPress.consume()
-            onDragEngaged()
             velocityTracker.resetTracking()
-            velocityTracker.addPosition(longPress.uptimeMillis, longPress.position)
-            dragState.onDrag(0f, itemWidthPx)
+            velocityTracker.addPosition(down.uptimeMillis, down.position)
+            val dragStart = awaitHorizontalTouchSlopOrCancellation(down.id) { change, over ->
+                change.consume()
+                onDragEngaged()
+                velocityTracker.addPosition(change.uptimeMillis, change.position)
+                dragState.onDrag(over, itemWidthPx)
+            } ?: continue
 
             var isCancelled = false
             try {
-                horizontalDrag(longPress.id) { change ->
+                horizontalDrag(dragStart.id) { change ->
                     change.consume()
                     velocityTracker.addPosition(change.uptimeMillis, change.position)
                     val dragAmount = change.position.x - change.previousPosition.x

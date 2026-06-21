@@ -379,6 +379,18 @@ class TopTabStylePolicyTest {
     }
 
     @Test
+    fun `top tab indicator reuses bottom bar immediate drag and liquid rendering`() {
+        val source = sourceText("app/src/main/java/com/android/purebilibili/feature/home/components/TopBar.kt")
+        val gestureBlock = source
+            .substringAfter("private fun Modifier.topTabSelectedItemDrag(")
+            .substringBefore("@Composable\nprivate fun")
+
+        assertTrue(gestureBlock.contains("awaitHorizontalTouchSlopOrCancellation"))
+        assertFalse(gestureBlock.contains("awaitLongPressOrCancellation"))
+        assertTrue(source.contains("KernelSuBottomBarIndicatorLayer("))
+    }
+
+    @Test
     fun `ios lightweight top tab capsule uses gray white while content keeps theme primary`() {
         val colorScheme = lightColorScheme(primary = Color(0xFF2D6A4F))
         val capsuleColor = resolveIosTopTabCapsuleContainerColor(
