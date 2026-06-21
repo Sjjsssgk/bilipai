@@ -40,6 +40,39 @@ class BottomPagerStatePersistenceStructureTest {
         assertFalse(animatedNavigationSource.contains("pagerState.scrollToPage("))
     }
 
+    @Test
+    fun `main bottom pager defers pager scroll until next frame after idle`() {
+        val source = loadSource("app/src/main/java/com/android/purebilibili/navigation/MainBottomPagerState.kt")
+        val animatedNavigationSource = source
+            .substringAfter("fun animateToPage(")
+            .substringBefore("fun syncPage(")
+        val snapNavigationSource = source
+            .substringAfter("fun snapToPage(")
+            .substringBefore("private suspend fun")
+
+        assertCallsInOrder(
+            animatedNavigationSource,
+            "awaitScrollIdle()",
+            "awaitNextFrame()",
+            "pagerState.animateScrollToPage("
+        )
+        assertCallsInOrder(
+            snapNavigationSource,
+            "awaitScrollIdle()",
+            "awaitNextFrame()",
+            "pagerState.scrollToPage(targetIndex)"
+        )
+    }
+
+    private fun assertCallsInOrder(source: String, vararg calls: String) {
+        var previousIndex = -1
+        calls.forEach { call ->
+            val currentIndex = source.indexOf(call)
+            assertTrue(currentIndex > previousIndex, "$call should appear after previous call")
+            previousIndex = currentIndex
+        }
+    }
+
     private fun loadSource(path: String): String {
         val normalizedPath = path.removePrefix("app/")
         val sourceFile = listOf(

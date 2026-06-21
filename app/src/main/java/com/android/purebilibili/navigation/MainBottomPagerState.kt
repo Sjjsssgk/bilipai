@@ -10,8 +10,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.withFrameNanos
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 
@@ -46,10 +49,17 @@ internal class MainBottomPagerState(
         navJob = coroutineScope.launch {
             val myJob = coroutineContext.job
             try {
+                // 等旧滚动取消和当前帧测量结束后，再触发 Pager 内部的强制重测。
+                previousJob?.join()
+                awaitScrollIdle()
+                awaitNextFrame()
+
                 pagerState.animateScrollToPage(
                     page = targetIndex,
                     animationSpec = tween(easing = EaseInOut, durationMillis = duration)
                 )
+            } catch (_: IllegalStateException) {
+                // Compose PagerState 仍可能在内部测量未空闲时抛错，避免底栏快速滑动直接闪退。
             } finally {
                 if (navJob == myJob) {
                     isNavigating = false
@@ -83,7 +93,13 @@ internal class MainBottomPagerState(
         isNavigating = false
         navJob = coroutineScope.launch {
             try {
+                previousJob?.join()
+                awaitScrollIdle()
+                awaitNextFrame()
+
                 pagerState.scrollToPage(targetIndex)
+            } catch (_: IllegalStateException) {
+                // 同 animateToPage：取消旧滚动后的测量竞争不应导致闪退。
             } finally {
                 if (pagerState.currentPage == targetIndex) {
                     selectedPage = targetIndex
@@ -91,6 +107,16 @@ internal class MainBottomPagerState(
                 }
             }
         }
+    }
+
+    private suspend fun awaitScrollIdle() {
+        if (pagerState.isScrollInProgress) {
+            snapshotFlow { pagerState.isScrollInProgress }.first { !it }
+        }
+    }
+
+    private suspend fun awaitNextFrame() {
+        withFrameNanos { }
     }
 }
 
