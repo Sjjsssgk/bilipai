@@ -3498,7 +3498,7 @@ fun VideoDetailScreen(
                                     videoPlayerBounds = nextBounds
                                 }
                         ) {
-                            // 🎬 返回时视频 → 封面 crossfade：封面图叠在播放器上方
+                            // 前台常驻封面叠层，返回时只改 alpha，避免临时解码/淡入打断共享元素动画。
                             if (crossfadeCoverUrl.isNotBlank()) {
                                 AsyncImage(
                                     model = coil.request.ImageRequest.Builder(LocalContext.current)

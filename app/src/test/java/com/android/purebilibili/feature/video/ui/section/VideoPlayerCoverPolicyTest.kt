@@ -235,10 +235,15 @@ class VideoPlayerCoverPolicyTest {
     fun detailReturnCoverUsesSingleAlphaTimelineWithoutCoilCrossfade() {
         val source = File("src/main/java/com/android/purebilibili/feature/video/screen/VideoDetailScreen.kt")
             .readText()
+        val playerContentBlock = source
+            .substringAfter(".clipToBounds()")
+            .substringBefore("PortraitInlineVideoPlayerHost(")
         val returnCoverBlock = source
             .substringAfter("if (crossfadeCoverUrl.isNotBlank()) {")
             .substringBefore("contentScale = ContentScale.Crop")
 
+        assertTrue(playerContentBlock.contains("if (crossfadeCoverUrl.isNotBlank())"))
+        assertFalse(playerContentBlock.contains("if (isLeaving"))
         assertTrue(returnCoverBlock.contains(".crossfade(false)"))
         assertTrue(returnCoverBlock.contains(".graphicsLayer { alpha = coverCrossfadeAlpha.value }"))
         assertFalse(returnCoverBlock.contains(".alpha(coverCrossfadeAlpha)"))
