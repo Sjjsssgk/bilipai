@@ -280,6 +280,7 @@ fun VideoTitleWithDesc(
     showOnlineCount: Boolean = true,
     transitionEnabled: Boolean = false,  // 🔗 共享元素过渡开关
     isQuickReturnLimitedForSharedElements: Boolean = false,
+    sourceRouteForSharedElement: String? = null,
     animateLayout: Boolean = true,
     onDescriptionUrlClick: ((String) -> Unit)? = null,
     onBgmClick: (BgmInfo) -> Unit = {},
@@ -364,7 +365,12 @@ fun VideoTitleWithDesc(
             if (metadataSharedEnabled) {
                 with(requireNotNull(sharedTransitionScope)) {
                      titleModifier = titleModifier.sharedBounds(
-                        sharedContentState = rememberSharedContentState(key = com.android.purebilibili.core.ui.transition.videoTitleSharedElementKey(info.bvid)),
+                        sharedContentState = rememberSharedContentState(
+                            key = com.android.purebilibili.core.ui.transition.videoTitleSharedElementKey(
+                                info.bvid,
+                                sourceRoute = sourceRouteForSharedElement
+                            )
+                        ),
                         animatedVisibilityScope = requireNotNull(animatedVisibilityScope),
                         boundsTransform = { _, _ ->
                             videoMetadataSharedElementBoundsTransformSpec(metadataSharedTransitionMotionSpec)
@@ -415,7 +421,12 @@ fun VideoTitleWithDesc(
                 if (metadataSharedEnabled) {
                     with(requireNotNull(sharedTransitionScope)) {
                         viewsModifier = viewsModifier.sharedBounds(
-                            sharedContentState = rememberSharedContentState(key = com.android.purebilibili.core.ui.transition.videoViewsSharedElementKey(info.bvid)),
+                            sharedContentState = rememberSharedContentState(
+                                key = com.android.purebilibili.core.ui.transition.videoViewsSharedElementKey(
+                                    info.bvid,
+                                    sourceRoute = sourceRouteForSharedElement
+                                )
+                            ),
                             animatedVisibilityScope = requireNotNull(animatedVisibilityScope),
                             boundsTransform = { _, _ ->
                                 videoMetadataSharedElementBoundsTransformSpec(metadataSharedTransitionMotionSpec)
@@ -441,7 +452,12 @@ fun VideoTitleWithDesc(
                 if (metadataSharedEnabled) {
                     with(requireNotNull(sharedTransitionScope)) {
                         danmakuModifier = danmakuModifier.sharedBounds(
-                            sharedContentState = rememberSharedContentState(key = com.android.purebilibili.core.ui.transition.videoDanmakuSharedElementKey(info.bvid)),
+                            sharedContentState = rememberSharedContentState(
+                                key = com.android.purebilibili.core.ui.transition.videoDanmakuSharedElementKey(
+                                    info.bvid,
+                                    sourceRoute = sourceRouteForSharedElement
+                                )
+                            ),
                             animatedVisibilityScope = requireNotNull(animatedVisibilityScope),
                             boundsTransform = { _, _ ->
                                 videoMetadataSharedElementBoundsTransformSpec(metadataSharedTransitionMotionSpec)
@@ -678,6 +694,7 @@ fun UpInfoSection(
     videoCount: Int? = null,
     transitionEnabled: Boolean = false,  // 🔗 共享元素过渡开关
     isQuickReturnLimitedForSharedElements: Boolean = false,
+    sourceRouteForSharedElement: String? = null,
     modifier: Modifier = Modifier
 ) {
     val playerControlVisibility by com.android.purebilibili.core.store.SettingsManager
@@ -731,7 +748,12 @@ fun UpInfoSection(
                 if (metadataSharedEnabled) {
                     with(requireNotNull(sharedTransitionScope)) {
                         avatarModifier = avatarModifier.sharedBounds(
-                            sharedContentState = rememberSharedContentState(key = com.android.purebilibili.core.ui.transition.videoAvatarSharedElementKey(info.bvid)),
+                            sharedContentState = rememberSharedContentState(
+                                key = com.android.purebilibili.core.ui.transition.videoAvatarSharedElementKey(
+                                    info.bvid,
+                                    sourceRoute = sourceRouteForSharedElement
+                                )
+                            ),
                             animatedVisibilityScope = requireNotNull(animatedVisibilityScope),
                             boundsTransform = { _, _ ->
                                 videoMetadataSharedElementBoundsTransformSpec(metadataSharedTransitionMotionSpec)
@@ -780,7 +802,12 @@ fun UpInfoSection(
                     if (metadataSharedEnabled) {
                         with(requireNotNull(sharedTransitionScope)) {
                             upNameModifier = upNameModifier.sharedBounds(
-                                sharedContentState = rememberSharedContentState(key = com.android.purebilibili.core.ui.transition.videoUpNameSharedElementKey(info.bvid)),
+                                sharedContentState = rememberSharedContentState(
+                                    key = com.android.purebilibili.core.ui.transition.videoUpNameSharedElementKey(
+                                        info.bvid,
+                                        sourceRoute = sourceRouteForSharedElement
+                                    )
+                                ),
                                 animatedVisibilityScope = requireNotNull(animatedVisibilityScope),
                                 boundsTransform = { _, _ ->
                                     videoMetadataSharedElementBoundsTransformSpec(metadataSharedTransitionMotionSpec)
@@ -839,7 +866,12 @@ fun UpInfoSection(
                 if (metadataSharedEnabled) {
                     with(requireNotNull(sharedTransitionScope)) {
                         followActionModifier = followActionModifier.sharedBounds(
-                            sharedContentState = rememberSharedContentState(key = com.android.purebilibili.core.ui.transition.videoUpActionSharedElementKey(info.bvid)),
+                            sharedContentState = rememberSharedContentState(
+                                key = com.android.purebilibili.core.ui.transition.videoUpActionSharedElementKey(
+                                    info.bvid,
+                                    sourceRoute = sourceRouteForSharedElement
+                                )
+                            ),
                             animatedVisibilityScope = requireNotNull(animatedVisibilityScope),
                             boundsTransform = { _, _ ->
                                 videoMetadataSharedElementBoundsTransformSpec(metadataSharedTransitionMotionSpec)

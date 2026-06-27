@@ -286,7 +286,12 @@ fun RelatedVideoItem(
                 if (metadataSharedEnabled && sharedTransitionScope != null && animatedVisibilityScope != null) {
                     with(sharedTransitionScope) {
                         titleBoxModifier = titleBoxModifier.sharedBounds(
-                            sharedContentState = rememberSharedContentState(key = com.android.purebilibili.core.ui.transition.videoTitleSharedElementKey(video.bvid)),
+                            sharedContentState = rememberSharedContentState(
+                                key = com.android.purebilibili.core.ui.transition.videoTitleSharedElementKey(
+                                    video.bvid,
+                                    sourceRoute = sourceRoute
+                                )
+                            ),
                             animatedVisibilityScope = animatedVisibilityScope,
                             boundsTransform = { _, _ ->
                                 com.android.purebilibili.core.ui.motion.AppMotionTokens.spatialSpec()
@@ -316,7 +321,12 @@ fun RelatedVideoItem(
                         if (metadataSharedEnabled && sharedTransitionScope != null && animatedVisibilityScope != null) {
                             with(sharedTransitionScope) {
                                 upNameBoxModifier = upNameBoxModifier.sharedBounds(
-                                    sharedContentState = rememberSharedContentState(key = com.android.purebilibili.core.ui.transition.videoUpNameSharedElementKey(video.bvid)),
+                                    sharedContentState = rememberSharedContentState(
+                                        key = com.android.purebilibili.core.ui.transition.videoUpNameSharedElementKey(
+                                            video.bvid,
+                                            sourceRoute = sourceRoute
+                                        )
+                                    ),
                                     animatedVisibilityScope = animatedVisibilityScope,
                                     boundsTransform = { _, _ ->
                                         com.android.purebilibili.core.ui.motion.AppMotionTokens.spatialSpec()
@@ -328,7 +338,12 @@ fun RelatedVideoItem(
                         if (metadataSharedEnabled && sharedTransitionScope != null && animatedVisibilityScope != null) {
                             with(sharedTransitionScope) {
                                 followActionModifier = followActionModifier.sharedBounds(
-                                    sharedContentState = rememberSharedContentState(key = com.android.purebilibili.core.ui.transition.videoUpActionSharedElementKey(video.bvid)),
+                                    sharedContentState = rememberSharedContentState(
+                                        key = com.android.purebilibili.core.ui.transition.videoUpActionSharedElementKey(
+                                            video.bvid,
+                                            sourceRoute = sourceRoute
+                                        )
+                                    ),
                                     animatedVisibilityScope = animatedVisibilityScope,
                                     boundsTransform = { _, _ ->
                                         com.android.purebilibili.core.ui.motion.AppMotionTokens.spatialSpec()
@@ -363,7 +378,12 @@ fun RelatedVideoItem(
                                     if (metadataSharedEnabled && sharedTransitionScope != null && animatedVisibilityScope != null) {
                                         with(sharedTransitionScope) {
                                             avatarModifier = avatarModifier.sharedBounds(
-                                                sharedContentState = rememberSharedContentState(key = com.android.purebilibili.core.ui.transition.videoAvatarSharedElementKey(video.bvid)),
+                                                sharedContentState = rememberSharedContentState(
+                                                    key = com.android.purebilibili.core.ui.transition.videoAvatarSharedElementKey(
+                                                        video.bvid,
+                                                        sourceRoute = sourceRoute
+                                                    )
+                                                ),
                                                 animatedVisibilityScope = animatedVisibilityScope,
                                                 boundsTransform = { _, _ ->
                                                     com.android.purebilibili.core.ui.motion.AppMotionTokens.spatialSpec()
@@ -404,7 +424,12 @@ fun RelatedVideoItem(
                         if (metadataSharedEnabled && sharedTransitionScope != null && animatedVisibilityScope != null) {
                             with(sharedTransitionScope) {
                                 viewsModifier = viewsModifier.sharedBounds(
-                                    sharedContentState = rememberSharedContentState(key = com.android.purebilibili.core.ui.transition.videoViewsSharedElementKey(video.bvid)),
+                                    sharedContentState = rememberSharedContentState(
+                                        key = com.android.purebilibili.core.ui.transition.videoViewsSharedElementKey(
+                                            video.bvid,
+                                            sourceRoute = sourceRoute
+                                        )
+                                    ),
                                     animatedVisibilityScope = animatedVisibilityScope,
                                     boundsTransform = { _, _ ->
                                         com.android.purebilibili.core.ui.motion.AppMotionTokens.spatialSpec()
@@ -423,7 +448,12 @@ fun RelatedVideoItem(
                         if (metadataSharedEnabled && sharedTransitionScope != null && animatedVisibilityScope != null) {
                             with(sharedTransitionScope) {
                                 danmakuModifier = danmakuModifier.sharedBounds(
-                                    sharedContentState = rememberSharedContentState(key = com.android.purebilibili.core.ui.transition.videoDanmakuSharedElementKey(video.bvid)),
+                                    sharedContentState = rememberSharedContentState(
+                                        key = com.android.purebilibili.core.ui.transition.videoDanmakuSharedElementKey(
+                                            video.bvid,
+                                            sourceRoute = sourceRoute
+                                        )
+                                    ),
                                     animatedVisibilityScope = animatedVisibilityScope,
                                     boundsTransform = { _, _ ->
                                         com.android.purebilibili.core.ui.motion.AppMotionTokens.spatialSpec()

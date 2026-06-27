@@ -997,17 +997,32 @@ private fun WatchLaterVideoCard(
     if (sharedElementReady) {
         with(requireNotNull(sharedTransitionScope)) {
             titleModifier = titleModifier.sharedBounds(
-                sharedContentState = rememberSharedContentState(key = videoTitleSharedElementKey(item.bvid)),
+                sharedContentState = rememberSharedContentState(
+                    key = videoTitleSharedElementKey(
+                        item.bvid,
+                        sourceRoute = sourceRoute
+                    )
+                ),
                 animatedVisibilityScope = requireNotNull(animatedVisibilityScope),
                 boundsTransform = { _, _ -> videoMetadataSharedElementBoundsTransformSpec(sharedTransitionMotionSpec) }
             )
             upNameModifier = upNameModifier.sharedBounds(
-                sharedContentState = rememberSharedContentState(key = videoUpNameSharedElementKey(item.bvid)),
+                sharedContentState = rememberSharedContentState(
+                    key = videoUpNameSharedElementKey(
+                        item.bvid,
+                        sourceRoute = sourceRoute
+                    )
+                ),
                 animatedVisibilityScope = requireNotNull(animatedVisibilityScope),
                 boundsTransform = { _, _ -> videoMetadataSharedElementBoundsTransformSpec(sharedTransitionMotionSpec) }
             )
             viewsModifier = viewsModifier.sharedBounds(
-                sharedContentState = rememberSharedContentState(key = videoViewsSharedElementKey(item.bvid)),
+                sharedContentState = rememberSharedContentState(
+                    key = videoViewsSharedElementKey(
+                        item.bvid,
+                        sourceRoute = sourceRoute
+                    )
+                ),
                 animatedVisibilityScope = requireNotNull(animatedVisibilityScope),
                 boundsTransform = { _, _ -> videoMetadataSharedElementBoundsTransformSpec(sharedTransitionMotionSpec) }
             )

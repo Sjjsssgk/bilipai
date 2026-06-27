@@ -3635,6 +3635,7 @@ fun VideoDetailScreen(
                                         isQuickReturnLimitedForSharedElements =
                                             isReturningFromDetail && isQuickReturningFromDetail,
                                         transitionEnabled = transitionEnabled,
+                                        sourceRouteForSharedElement = sourceRouteForSharedElement,
                                         favoriteFolders = favoriteFolders,
                                         isFavoriteFoldersLoading = isFavoriteFoldersLoading,
                                         selectedFavoriteFolderIds = selectedFavoriteFolderIds,

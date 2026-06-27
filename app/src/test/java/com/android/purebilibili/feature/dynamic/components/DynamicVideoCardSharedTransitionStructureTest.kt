@@ -12,7 +12,8 @@ class DynamicVideoCardSharedTransitionStructureTest {
             .readText()
 
         assertTrue(source.contains("videoCoverSharedElementKey(archive.bvid"))
-        assertTrue(source.contains("videoTitleSharedElementKey(archive.bvid)"))
+        assertTrue(source.contains("videoTitleSharedElementKey("))
+        assertTrue(source.contains("sourceRoute = sourceRoute"))
         assertTrue(source.contains("VideoCardLargeCover("))
         assertTrue(source.contains("titleModifier = titleModifier"))
     }

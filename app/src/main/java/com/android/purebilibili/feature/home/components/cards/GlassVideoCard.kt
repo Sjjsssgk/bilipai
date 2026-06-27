@@ -454,7 +454,10 @@ fun GlassVideoCard(
                         with(requireNotNull(sharedTransitionScope)) {
                             Modifier.sharedBounds(
                                 sharedContentState = rememberSharedContentState(
-                                    key = videoTitleSharedElementKey(video.bvid)
+                                    key = videoTitleSharedElementKey(
+                                        video.bvid,
+                                        sourceRoute = effectiveSharedElementSourceRoute
+                                    )
                                 ),
                                 animatedVisibilityScope = requireNotNull(animatedVisibilityScope),
                                 boundsTransform = { _, _ ->

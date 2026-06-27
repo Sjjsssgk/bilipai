@@ -992,7 +992,10 @@ private fun PartitionVideoRow(
                 with(requireNotNull(sharedTransitionScope)) {
                     titleModifier = titleModifier.sharedBounds(
                         sharedContentState = rememberSharedContentState(
-                            key = videoTitleSharedElementKey(video.bvid)
+                            key = videoTitleSharedElementKey(
+                                video.bvid,
+                                sourceRoute = sharedElementSourceRoute
+                            )
                         ),
                         animatedVisibilityScope = requireNotNull(animatedVisibilityScope),
                         boundsTransform = { _, _ ->

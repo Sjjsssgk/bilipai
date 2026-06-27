@@ -308,6 +308,7 @@ fun VideoContentSection(
     // 🔗 [新增] 共享元素过渡开关
     transitionEnabled: Boolean = false,
     isQuickReturnLimitedForSharedElements: Boolean = false,
+    sourceRouteForSharedElement: String? = null,
     // [新增] 收藏夹相关参数
     onFavoriteLongClick: () -> Unit = {},
     favoriteFolderDialogVisible: Boolean = false,
@@ -518,6 +519,7 @@ fun VideoContentSection(
                         contentPadding = PaddingValues(bottom = bottomContentPadding),
                         transitionEnabled = transitionEnabled,
                         isQuickReturnLimitedForSharedElements = isQuickReturnLimitedForSharedElements,
+                        sourceRouteForSharedElement = sourceRouteForSharedElement,
                         ownerFollowerCount = ownerFollowerCount,
                         ownerVideoCount = ownerVideoCount,
                         showUpBadge = showUpBadge,
@@ -679,6 +681,7 @@ private fun VideoIntroTab(
     contentPadding: PaddingValues,
     transitionEnabled: Boolean = false,  // 🔗 共享元素过渡开关
     isQuickReturnLimitedForSharedElements: Boolean = false,
+    sourceRouteForSharedElement: String? = null,
     ownerFollowerCount: Int? = null,
     ownerVideoCount: Int? = null,
     showUpBadge: Boolean = true,
@@ -735,6 +738,7 @@ private fun VideoIntroTab(
                 onGloballyPositioned = { },
                 transitionEnabled = transitionEnabled,  // 🔗 传递共享元素开关
                 isQuickReturnLimitedForSharedElements = isQuickReturnLimitedForSharedElements,
+                sourceRouteForSharedElement = sourceRouteForSharedElement,
                 ownerFollowerCount = ownerFollowerCount,
                 ownerVideoCount = ownerVideoCount,
                 onFavoriteLongClick = onFavoriteLongClick,
@@ -1041,6 +1045,7 @@ private fun VideoHeaderContent(
     onGloballyPositioned: (Float) -> Unit,
     transitionEnabled: Boolean = false,  // 🔗 共享元素过渡开关
     isQuickReturnLimitedForSharedElements: Boolean = false,
+    sourceRouteForSharedElement: String? = null,
     ownerFollowerCount: Int? = null,
     ownerVideoCount: Int? = null,
     onFavoriteLongClick: () -> Unit = {},
@@ -1096,7 +1101,8 @@ private fun VideoHeaderContent(
             followerCount = ownerFollowerCount,
             videoCount = ownerVideoCount,
             transitionEnabled = transitionEnabled,  // 🔗 传递共享元素开关
-            isQuickReturnLimitedForSharedElements = isQuickReturnLimitedForSharedElements
+            isQuickReturnLimitedForSharedElements = isQuickReturnLimitedForSharedElements,
+            sourceRouteForSharedElement = sourceRouteForSharedElement
         )
 
         VideoTitleWithDesc(
@@ -1104,6 +1110,7 @@ private fun VideoHeaderContent(
             videoTags = videoTags,
             transitionEnabled = transitionEnabled,  // 🔗 传递共享元素开关
             isQuickReturnLimitedForSharedElements = isQuickReturnLimitedForSharedElements,
+            sourceRouteForSharedElement = sourceRouteForSharedElement,
             bgmList = resolveDisplayBgmList(
                 bgmInfo = bgmInfo,
                 bgmInfoList = bgmInfoList

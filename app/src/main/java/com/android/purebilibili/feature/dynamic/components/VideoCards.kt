@@ -162,7 +162,12 @@ fun VideoCardLarge(
     val titleModifier = if (sharedElementReady) {
         with(requireNotNull(sharedTransitionScope)) {
             Modifier.sharedBounds(
-                sharedContentState = rememberSharedContentState(key = videoTitleSharedElementKey(archive.bvid)),
+                sharedContentState = rememberSharedContentState(
+                    key = videoTitleSharedElementKey(
+                        archive.bvid,
+                        sourceRoute = sourceRoute
+                    )
+                ),
                 animatedVisibilityScope = requireNotNull(animatedVisibilityScope),
                 boundsTransform = { _, _ -> videoMetadataSharedElementBoundsTransformSpec(sharedTransitionMotionSpec) }
             )

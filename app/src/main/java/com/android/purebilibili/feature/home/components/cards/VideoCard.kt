@@ -969,7 +969,12 @@ fun ElegantVideoCard(
             if (metadataSharedEnabled) {
                 with(requireNotNull(sharedTransitionScope)) {
                     titleModifier = titleModifier.sharedBounds(
-                        sharedContentState = rememberSharedContentState(key = com.android.purebilibili.core.ui.transition.videoTitleSharedElementKey(video.bvid)),
+                        sharedContentState = rememberSharedContentState(
+                            key = com.android.purebilibili.core.ui.transition.videoTitleSharedElementKey(
+                                video.bvid,
+                                sourceRoute = effectiveSharedElementSourceRoute
+                            )
+                        ),
                         animatedVisibilityScope = requireNotNull(animatedVisibilityScope),
                         boundsTransform = { _, _ ->
                             videoMetadataSharedElementBoundsTransformSpec(homeSharedTransitionMotionSpec)
@@ -1092,7 +1097,12 @@ fun ElegantVideoCard(
             if (metadataSharedEnabled) {
                 with(requireNotNull(sharedTransitionScope)) {
                     upNameModifier = upNameModifier.sharedBounds(
-                        sharedContentState = rememberSharedContentState(key = com.android.purebilibili.core.ui.transition.videoUpNameSharedElementKey(video.bvid)),
+                        sharedContentState = rememberSharedContentState(
+                            key = com.android.purebilibili.core.ui.transition.videoUpNameSharedElementKey(
+                                video.bvid,
+                                sourceRoute = effectiveSharedElementSourceRoute
+                            )
+                        ),
                         animatedVisibilityScope = requireNotNull(animatedVisibilityScope),
                         boundsTransform = { _, _ ->
                             videoMetadataSharedElementBoundsTransformSpec(homeSharedTransitionMotionSpec)
@@ -1104,7 +1114,12 @@ fun ElegantVideoCard(
             if (metadataSharedEnabled) {
                 with(requireNotNull(sharedTransitionScope)) {
                     followBadgeModifier = followBadgeModifier.sharedBounds(
-                        sharedContentState = rememberSharedContentState(key = com.android.purebilibili.core.ui.transition.videoUpActionSharedElementKey(video.bvid)),
+                        sharedContentState = rememberSharedContentState(
+                            key = com.android.purebilibili.core.ui.transition.videoUpActionSharedElementKey(
+                                video.bvid,
+                                sourceRoute = effectiveSharedElementSourceRoute
+                            )
+                        ),
                         animatedVisibilityScope = requireNotNull(animatedVisibilityScope),
                         boundsTransform = { _, _ ->
                             videoMetadataSharedElementBoundsTransformSpec(homeSharedTransitionMotionSpec)
@@ -1157,7 +1172,12 @@ fun ElegantVideoCard(
                         if (metadataSharedEnabled) {
                             with(requireNotNull(sharedTransitionScope)) {
                                 avatarModifier = avatarModifier.sharedBounds(
-                                    sharedContentState = rememberSharedContentState(key = com.android.purebilibili.core.ui.transition.videoAvatarSharedElementKey(video.bvid)),
+                                    sharedContentState = rememberSharedContentState(
+                                        key = com.android.purebilibili.core.ui.transition.videoAvatarSharedElementKey(
+                                            video.bvid,
+                                            sourceRoute = effectiveSharedElementSourceRoute
+                                        )
+                                    ),
                                     animatedVisibilityScope = requireNotNull(animatedVisibilityScope),
                                     boundsTransform = { _, _ ->
                                         videoMetadataSharedElementBoundsTransformSpec(homeSharedTransitionMotionSpec)
@@ -1214,7 +1234,12 @@ fun ElegantVideoCard(
                 if (metadataSharedEnabled) {
                     with(requireNotNull(sharedTransitionScope)) {
                         viewsRowModifier = viewsRowModifier.sharedBounds(
-                            sharedContentState = rememberSharedContentState(key = com.android.purebilibili.core.ui.transition.videoViewsSharedElementKey(video.bvid)),
+                            sharedContentState = rememberSharedContentState(
+                                key = com.android.purebilibili.core.ui.transition.videoViewsSharedElementKey(
+                                    video.bvid,
+                                    sourceRoute = effectiveSharedElementSourceRoute
+                                )
+                            ),
                             animatedVisibilityScope = requireNotNull(animatedVisibilityScope),
                             boundsTransform = { _, _ ->
                                 videoMetadataSharedElementBoundsTransformSpec(homeSharedTransitionMotionSpec)
