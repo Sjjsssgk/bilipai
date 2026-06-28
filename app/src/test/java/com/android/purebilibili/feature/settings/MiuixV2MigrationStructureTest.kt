@@ -106,6 +106,13 @@ class MiuixV2MigrationStructureTest {
     }
 
     @Test
+    fun miuixDockedBottomBar_usesOfficialNavigationBarItemForStandardItems() {
+        val source = loadSource("app/src/main/java/com/android/purebilibili/feature/home/components/BottomBar.kt")
+        assertTrue(source.contains("MiuixNavigationBarItem("))
+        assertTrue(source.contains("shouldUseMiuixOfficialNavigationBarItem("))
+    }
+
+    @Test
     fun searchTopBar_routesMiuixVariantToInputField() {
         val source = loadSource("app/src/main/java/com/android/purebilibili/feature/search/SearchScreen.kt")
         assertTrue(source.contains("InputField("))

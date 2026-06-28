@@ -19,6 +19,7 @@ import androidx.compose.foundation.combinedClickable  // [新增] 组合点击�
 import androidx.compose.foundation.ExperimentalFoundationApi // [新增]
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.border
 import androidx.compose.foundation.shape.CircleShape
@@ -58,6 +59,7 @@ import androidx.compose.ui.draw.dropShadow
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.geometry.Offset
@@ -170,6 +172,7 @@ import kotlin.math.sign
 import kotlin.math.sqrt
 import top.yukonga.miuix.kmp.basic.NavigationBar as MiuixNavigationBar
 import top.yukonga.miuix.kmp.basic.NavigationBarDisplayMode as MiuixNavigationBarDisplayMode
+import top.yukonga.miuix.kmp.basic.NavigationBarItem as MiuixNavigationBarItem
 import top.yukonga.miuix.kmp.blur.Backdrop as MiuixBackdrop
 import top.yukonga.miuix.kmp.blur.LayerBackdrop as MiuixLayerBackdrop
 import top.yukonga.miuix.kmp.blur.blur as miuixBlur
@@ -1415,6 +1418,24 @@ internal fun resolveMiuixDockedBottomBarItemColor(
     selectedColor: Color,
     unselectedColor: Color
 ): Color = if (selected) selectedColor else unselectedColor
+
+internal fun resolveMiuixNavigationBarPressedAlpha(selected: Boolean): Float =
+    if (selected) 0.5f else 0.6f
+
+internal fun resolveMiuixNavigationBarItemTintColor(
+    baseColor: Color,
+    selected: Boolean,
+    isPressed: Boolean
+): Color {
+    if (!isPressed) return baseColor
+    return baseColor.copy(alpha = resolveMiuixNavigationBarPressedAlpha(selected))
+}
+
+internal fun shouldUseMiuixOfficialNavigationBarItem(
+    skinIconPath: String?,
+    labelScrimAlpha: Float,
+    reminderBadgeText: String? = null
+): Boolean = skinIconPath == null && labelScrimAlpha <= 0f && reminderBadgeText == null
 
 internal fun resolveBottomBarFloatingHeightDp(
     labelMode: Int,
@@ -2910,19 +2931,29 @@ private fun RowScope.MiuixDockedBottomBarItem(
     skinIconPath: String? = null,
     reminderBadgeText: String? = null
 ) {
-    var isPressed by remember { mutableStateOf(false) }
-    val currentOnClick by rememberUpdatedState(onClick)
+    if (shouldUseMiuixOfficialNavigationBarItem(skinIconPath, labelScrimAlpha, reminderBadgeText)) {
+        MiuixNavigationBarItem(
+            selected = selected,
+            onClick = onClick,
+            icon = icon,
+            label = label,
+        )
+        return
+    }
+
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
     val baseContentColor = resolveMiuixDockedBottomBarItemColor(
         selected = selected,
         selectedColor = selectedColor,
         unselectedColor = unselectedColor
     )
     val contentColor by animateColorAsState(
-        targetValue = if (isPressed) {
-            baseContentColor.copy(alpha = if (selected) 0.62f else 0.54f)
-        } else {
-            baseContentColor
-        },
+        targetValue = resolveMiuixNavigationBarItemTintColor(
+            baseColor = baseContentColor,
+            selected = selected,
+            isPressed = isPressed
+        ),
         label = "${label}_miuix_docked_bottom_bar_color"
     )
     val iconAndText = showIcon && showText
@@ -2932,19 +2963,13 @@ private fun RowScope.MiuixDockedBottomBarItem(
         modifier = Modifier
             .height(resolveMiuixDockedBottomBarItemHeight(skinIconPath != null))
             .weight(1f)
-            .pointerInput(Unit) {
-                detectTapGestures(
-                    onPress = {
-                        isPressed = true
-                        try {
-                            tryAwaitRelease()
-                        } finally {
-                            isPressed = false
-                        }
-                    },
-                    onTap = { currentOnClick() }
-                )
-            },
+            .selectable(
+                selected = selected,
+                onClick = onClick,
+                role = Role.Tab,
+                interactionSource = interactionSource,
+                indication = null
+            ),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = if (iconAndText) Arrangement.Top else Arrangement.Center
     ) {

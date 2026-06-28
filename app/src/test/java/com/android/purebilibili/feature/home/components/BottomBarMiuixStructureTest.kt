@@ -616,6 +616,19 @@ class BottomBarMiuixStructureTest {
         assertFalse(miuixDockedItemSource.contains("height(64.dp)"))
     }
 
+    @Test
+    fun `miuix docked bottom bar routes standard items to official navigation bar item`() {
+        val source = loadSource("app/src/main/java/com/android/purebilibili/feature/home/components/BottomBar.kt")
+        val miuixDockedItemSource = source
+            .substringAfter("private fun RowScope.MiuixDockedBottomBarItem(")
+            .substringBefore("@Composable\nprivate fun KernelSuAlignedBottomBar(")
+
+        assertTrue(miuixDockedItemSource.contains("shouldUseMiuixOfficialNavigationBarItem("))
+        assertTrue(miuixDockedItemSource.contains("MiuixNavigationBarItem("))
+        assertTrue(miuixDockedItemSource.contains("resolveMiuixNavigationBarItemTintColor("))
+        assertFalse(miuixDockedItemSource.contains("detectTapGestures("))
+    }
+
     private fun loadSource(path: String): String {
         val normalizedPath = path.removePrefix("app/")
         val sourceFile = listOf(

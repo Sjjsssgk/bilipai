@@ -42,6 +42,63 @@ class BottomBarMiuixPolicyTest {
     }
 
     @Test
+    fun `miuix navigation bar pressed alpha matches official defaults`() {
+        assertEquals(0.5f, resolveMiuixNavigationBarPressedAlpha(selected = true), 0.001f)
+        assertEquals(0.6f, resolveMiuixNavigationBarPressedAlpha(selected = false), 0.001f)
+    }
+
+    @Test
+    fun `miuix navigation bar tint applies pressed alpha only while pressed`() {
+        val baseColor = Color(0xFFE85A91)
+        assertEquals(
+            baseColor,
+            resolveMiuixNavigationBarItemTintColor(
+                baseColor = baseColor,
+                selected = true,
+                isPressed = false
+            )
+        )
+        assertEquals(
+            baseColor.copy(alpha = 0.5f),
+            resolveMiuixNavigationBarItemTintColor(
+                baseColor = baseColor,
+                selected = true,
+                isPressed = true
+            )
+        )
+    }
+
+    @Test
+    fun `official navigation bar item is used for standard docked items`() {
+        assertTrue(
+            shouldUseMiuixOfficialNavigationBarItem(
+                skinIconPath = null,
+                labelScrimAlpha = 0f,
+                reminderBadgeText = null
+            )
+        )
+        assertFalse(
+            shouldUseMiuixOfficialNavigationBarItem(
+                skinIconPath = "/skin/home.png",
+                labelScrimAlpha = 0f
+            )
+        )
+        assertFalse(
+            shouldUseMiuixOfficialNavigationBarItem(
+                skinIconPath = null,
+                labelScrimAlpha = 0.2f
+            )
+        )
+        assertFalse(
+            shouldUseMiuixOfficialNavigationBarItem(
+                skinIconPath = null,
+                labelScrimAlpha = 0f,
+                reminderBadgeText = "9"
+            )
+        )
+    }
+
+    @Test
     fun `docked miuix bottom item uses theme color when selected`() {
         val themeColor = Color(0xFFE85A91)
         val neutralColor = Color(0xFF9A9AA0)
