@@ -44,11 +44,10 @@ import com.android.purebilibili.core.theme.LocalSettingsLiquidGlassEnabled
 import com.android.purebilibili.core.theme.iOSTeal
 import com.android.purebilibili.core.theme.iOSOrange
 import com.android.purebilibili.core.theme.iOSSystemGray
-import com.android.purebilibili.core.ui.AdaptiveScaffold
-import com.android.purebilibili.core.ui.AdaptiveTopAppBar
 import com.android.purebilibili.core.ui.AppSurfaceTokens
-import com.android.purebilibili.core.ui.rememberAppBackIcon
 import com.android.purebilibili.core.util.LocalWindowSizeClass
+import com.android.purebilibili.feature.settings.ui.SettingsLargeTitleHeader
+import com.android.purebilibili.feature.settings.ui.SettingsPageScaffold
 import com.android.purebilibili.core.store.TokenManager
 import com.android.purebilibili.feature.screenshot.AppScreenshotCaptureMode
 import com.android.purebilibili.feature.screenshot.AppScreenshotGestureMode
@@ -73,25 +72,19 @@ fun PlaybackSettingsScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val screenTitle = stringResource(R.string.playback_settings_title)
     val backLabel = stringResource(R.string.common_back)
-    AdaptiveScaffold(
-        topBar = {
-            AdaptiveTopAppBar(
-                title = screenTitle,
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(rememberAppBackIcon(), contentDescription = backLabel)
-                    }
-                },
-                colors = settingsSubpageTopAppBarColors()
-            )
-        },
-        containerColor = settingsSubpageContainerColor(),
-        contentWindowInsets = WindowInsets(0.dp)
-    ) { padding ->
+    val bottomContentPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+
+    SettingsPageScaffold(
+        title = screenTitle,
+        onBack = onBack,
+        backContentDescription = backLabel,
+        bottomContentPadding = bottomContentPadding,
+        scrollHost = SettingsPageScrollHost.External,
+        topBarBlurEnabled = state.headerBlurEnabled,
+        header = { SettingsLargeTitleHeader(title = screenTitle) },
+    ) {
         CompositionLocalProvider(LocalSettingsLiquidGlassEnabled provides state.isLiquidGlassEnabled) {
-            Box(modifier = Modifier.padding(padding)) {
-                PlaybackSettingsContent(viewModel = viewModel, state = state)
-            }
+            PlaybackSettingsContent(viewModel = viewModel, state = state)
         }
     }
 }

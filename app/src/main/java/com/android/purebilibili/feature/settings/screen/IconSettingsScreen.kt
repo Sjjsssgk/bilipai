@@ -38,10 +38,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.android.purebilibili.R
 import com.android.purebilibili.core.theme.*
-import com.android.purebilibili.core.ui.AdaptiveScaffold
-import com.android.purebilibili.core.ui.AdaptiveTopAppBar
+import com.android.purebilibili.feature.settings.ui.SettingsLargeTitleHeader
+import com.android.purebilibili.feature.settings.ui.SettingsPageScaffold
 import com.android.purebilibili.core.ui.resolveBottomSafeAreaPadding
-import com.android.purebilibili.core.ui.rememberAppBackIcon
 import io.github.alexzhirkevich.cupertino.icons.CupertinoIcons
 import io.github.alexzhirkevich.cupertino.icons.outlined.Info
 import io.github.alexzhirkevich.cupertino.icons.filled.CheckmarkCircle
@@ -98,31 +97,21 @@ fun IconSettingsScreen(
     val backLabel = stringResource(R.string.common_back)
     
     val iconGroups = getIconGroups()
+    val bottomContentPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
 
-    AdaptiveScaffold(
-        topBar = {
-            AdaptiveTopAppBar(
-                title = screenTitle,
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(rememberAppBackIcon(), contentDescription = backLabel)
-                    }
-                },
-                colors = settingsSubpageTopAppBarColors()
-            )
-        },
-        containerColor = resolveIconSettingsContainerColor(
-            background = AppSurfaceTokens.groupedListContainer(),
-            surfaceVariant = AppSurfaceTokens.cardContainer()
-        ),
-        contentWindowInsets = WindowInsets(0.dp)
-    ) { padding ->
+    SettingsPageScaffold(
+        title = screenTitle,
+        onBack = onBack,
+        backContentDescription = backLabel,
+        bottomContentPadding = bottomContentPadding,
+        scrollHost = SettingsPageScrollHost.External,
+        header = { SettingsLargeTitleHeader(title = screenTitle) },
+    ) {
         IconSettingsContent(
-            modifier = Modifier.padding(padding),
             state = state,
             viewModel = viewModel,
             context = context,
-            iconGroups = iconGroups
+            iconGroups = iconGroups,
         )
     }
 }

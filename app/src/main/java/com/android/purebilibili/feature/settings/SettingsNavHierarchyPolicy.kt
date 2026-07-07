@@ -126,8 +126,13 @@ internal fun isSettingsNavHierarchyTransition(
     if (resolveSettingsNavParentRoute(normalizedChild) == normalizedParent) {
         return true
     }
-    return normalizedParent == SETTINGS_SEARCH_ROUTE_BASE &&
-        normalizedChild in SETTINGS_DEPTH2_ROUTE_BASES
+    // 设置根页/搜索页可直达二级子页（分栏、快捷入口、Nav3 push），需与 category 中转同等动画。
+    if (normalizedChild in SETTINGS_DEPTH2_ROUTE_BASES &&
+        normalizedParent in setOf(SETTINGS_ROUTE_BASE, SETTINGS_SEARCH_ROUTE_BASE)
+    ) {
+        return true
+    }
+    return false
 }
 
 internal fun resolveSettingsNavRouteTransition(

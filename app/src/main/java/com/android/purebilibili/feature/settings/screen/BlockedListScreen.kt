@@ -23,8 +23,8 @@ import com.android.purebilibili.data.repository.BilibiliBlockedListSyncRepositor
 import com.android.purebilibili.data.repository.BlockedUpRepository
 import com.android.purebilibili.data.repository.buildBlockedUpShareText
 import com.android.purebilibili.data.repository.parseBlockedUpShareText
-import com.android.purebilibili.core.ui.AdaptiveScaffold
-import com.android.purebilibili.core.ui.AdaptiveTopAppBar
+import com.android.purebilibili.feature.settings.ui.SettingsLargeTitleHeader
+import com.android.purebilibili.feature.settings.ui.SettingsPageScaffold
 import com.android.purebilibili.core.ui.AppShapes
 import com.android.purebilibili.core.ui.AppSurfaceTokens
 import com.android.purebilibili.core.ui.ContainerLevel
@@ -80,20 +80,18 @@ fun BlockedListScreen(
         }
     }
 
-    AdaptiveScaffold(
-        topBar = {
-            AdaptiveTopAppBar(
-                title = "黑名单管理",
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(rememberAppBackIcon(), contentDescription = "返回")
-                    }
-                },
-                colors = settingsSubpageTopAppBarColors()
-            )
-        },
-        containerColor = settingsSubpageContainerColor()
-    ) { padding ->
+    val screenTitle = "黑名单管理"
+    val backLabel = "返回"
+    val bottomContentPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+
+    SettingsPageScaffold(
+        title = screenTitle,
+        onBack = onBack,
+        backContentDescription = backLabel,
+        bottomContentPadding = bottomContentPadding,
+        scrollHost = SettingsPageScrollHost.External,
+        header = { SettingsLargeTitleHeader(title = screenTitle) },
+    ) {
         BlockedListContent(
             blockedUps = blockedUps,
             syncingBlockedList = syncingBlockedList,
@@ -148,7 +146,6 @@ fun BlockedListScreen(
                     blockedListSyncMessage = repository.unblockUpWithBilibiliSync(mid).message
                 }
             },
-            modifier = Modifier.padding(padding)
         )
     }
 }

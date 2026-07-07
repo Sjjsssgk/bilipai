@@ -55,6 +55,7 @@ import com.android.purebilibili.core.store.HomeHeaderCollapseMode
 import com.android.purebilibili.core.store.HomeTopLayoutOrder
 import com.android.purebilibili.core.store.HomeTopRightAction
 import com.android.purebilibili.core.store.SettingsManager
+import com.android.purebilibili.core.store.resolveHomeHeaderCollapseModeForSearch
 import com.android.purebilibili.core.store.resolveHomeHeaderCollapseModeForTopTabs
 import com.android.purebilibili.core.theme.BottomBarColors  //  统一底栏颜色配置
 import com.android.purebilibili.core.theme.BottomBarColorPalette  //  调色板
@@ -62,16 +63,15 @@ import com.android.purebilibili.core.theme.BottomBarColorNames  //  颜色名称
 import com.android.purebilibili.core.theme.LocalSettingsLiquidGlassEnabled
 import com.android.purebilibili.core.theme.LocalUiPreset
 import com.android.purebilibili.core.theme.UiPreset
-import com.android.purebilibili.core.ui.AdaptiveScaffold
-import com.android.purebilibili.core.ui.AdaptiveTopAppBar
-import com.android.purebilibili.core.ui.rememberAppBackIcon
+import com.android.purebilibili.core.ui.adaptive.resolveDeviceUiProfile
+import com.android.purebilibili.core.ui.adaptive.resolveEffectiveMotionTier
+import com.android.purebilibili.feature.settings.ui.SettingsLargeTitleHeader
+import com.android.purebilibili.feature.settings.ui.SettingsPageScaffold
 import com.android.purebilibili.core.ui.resolveAppDynamicIcon
 import com.android.purebilibili.core.ui.resolveAppHomeIcon
 import com.android.purebilibili.core.ui.resolveAppSettingsIcon
 import com.android.purebilibili.core.ui.resolveAppTvIcon
 import com.android.purebilibili.core.ui.resolveAppWatchLaterIcon
-import com.android.purebilibili.core.ui.adaptive.resolveDeviceUiProfile
-import com.android.purebilibili.core.ui.adaptive.resolveEffectiveMotionTier
 import com.android.purebilibili.core.util.LocalWindowSizeClass
 import kotlinx.coroutines.launch
 import com.android.purebilibili.core.ui.components.*
@@ -202,25 +202,18 @@ fun BottomBarSettingsScreen(
     val settingsLiquidGlassEnabled by SettingsManager.getLiquidGlassEnabled(context).collectAsStateWithLifecycle(initialValue = true)
     val screenTitle = stringResource(R.string.bottom_bar_management_title)
     val backLabel = stringResource(R.string.common_back)
-    AdaptiveScaffold(
-        topBar = {
-            AdaptiveTopAppBar(
-                title = screenTitle,
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(rememberAppBackIcon(), contentDescription = backLabel)
-                    }
-                },
-                colors = settingsSubpageTopAppBarColors()
-            )
-        },
-        containerColor = settingsSubpageContainerColor(),
-        contentWindowInsets = WindowInsets(0.dp)
-    ) { padding ->
+    val bottomContentPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+
+    SettingsPageScaffold(
+        title = screenTitle,
+        onBack = onBack,
+        backContentDescription = backLabel,
+        bottomContentPadding = bottomContentPadding,
+        scrollHost = SettingsPageScrollHost.External,
+        header = { SettingsLargeTitleHeader(title = screenTitle) },
+    ) {
         CompositionLocalProvider(LocalSettingsLiquidGlassEnabled provides settingsLiquidGlassEnabled) {
-            BottomBarSettingsContent(
-                modifier = Modifier.padding(padding)
-            )
+            BottomBarSettingsContent()
         }
     }
 }
@@ -837,6 +830,82 @@ fun BottomBarSettingsContent(
                                             color = if (isSelected) MaterialTheme.colorScheme.primary
                                             else MaterialTheme.colorScheme.onSurfaceVariant,
                                             fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium
+                                        )
+                                    }
+                                }
+                            }
+
+                            HorizontalDivider()
+
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    CupertinoIcons.Outlined.MagnifyingGlass,
+                                    contentDescription = null,
+                                    tint = com.android.purebilibili.core.theme.iOSTeal,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                                Spacer(modifier = Modifier.width(16.dp))
+                                Column {
+                                    Text(
+                                        text = "首页搜索框",
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Text(
+                                        text = if (homeHeaderCollapseMode.collapseSearch) {
+                                            "列表下滑时折叠搜索框"
+                                        } else {
+                                            "搜索框固定在顶部"
+                                        },
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                listOf(true to "下滑折叠", false to "不折叠").forEach { (collapseSearch, label) ->
+                                    val isSelected = homeHeaderCollapseMode.collapseSearch == collapseSearch
+                                    Column(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .clip(AppShapes.container(ContainerLevel.Card))
+                                            .clickable {
+                                                val nextMode = resolveHomeHeaderCollapseModeForSearch(
+                                                    currentMode = homeHeaderCollapseMode,
+                                                    collapseSearch = collapseSearch
+                                                )
+                                                scope.launch {
+                                                    SettingsManager.setHomeHeaderCollapseMode(context, nextMode)
+                                                }
+                                            }
+                                            .background(
+                                                if (isSelected) {
+                                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+                                                } else {
+                                                    Color.Transparent
+                                                }
+                                            )
+                                            .heightIn(min = 48.dp)
+                                            .padding(horizontal = 12.dp, vertical = 9.dp),
+                                        horizontalAlignment = Alignment.CenterHorizontally
+                                    ) {
+                                        Text(
+                                            text = label,
+                                            style = MaterialTheme.typography.labelMedium,
+                                            color = if (isSelected) {
+                                                MaterialTheme.colorScheme.primary
+                                            } else {
+                                                MaterialTheme.colorScheme.onSurfaceVariant
+                                            },
+                                            fontWeight = if (isSelected) {
+                                                FontWeight.SemiBold
+                                            } else {
+                                                FontWeight.Medium
+                                            }
                                         )
                                     }
                                 }

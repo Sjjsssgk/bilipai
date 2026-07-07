@@ -76,7 +76,7 @@ private val SETTINGS_SEARCH_INDEX: List<SettingsSearchEntry> = listOf(
         title = "导航与标签",
         subtitle = "底栏、顶部标签、平板侧边栏与底栏项目顺序",
         section = "设置",
-        aliases = listOf("导航", "底栏", "底部栏", "顶部标签", "顶部标签页", "标签排序", "平板侧边栏", "侧边导航栏", "底栏顺序", "底栏项目")
+        aliases = listOf("导航", "底栏", "底部栏", "顶部标签", "顶部标签页", "首页搜索框", "搜索框折叠", "标签排序", "平板侧边栏", "侧边导航栏", "底栏顺序", "底栏项目")
     ),
     SettingsSearchEntry(
         target = SettingsSearchTarget.PLAYBACK_QUALITY,
@@ -333,6 +333,8 @@ private val SETTINGS_SEARCH_INDEX: List<SettingsSearchEntry> = listOf(
             "tab",
             "顶部标签",
             "顶部标签页",
+            "首页搜索框",
+            "搜索框折叠",
             "侧边导航栏",
             "侧边栏",
             "平板导航",

@@ -19,13 +19,12 @@ import com.android.purebilibili.core.plugin.json.JsonPluginManager
 import com.android.purebilibili.core.plugin.json.JsonRulePlugin
 import com.android.purebilibili.core.plugin.json.Rule
 import com.android.purebilibili.core.theme.iOSBlue
-import com.android.purebilibili.core.ui.AdaptiveScaffold
+import com.android.purebilibili.feature.settings.ui.SettingsLargeTitleHeader
+import com.android.purebilibili.feature.settings.ui.SettingsPageScaffold
 import com.android.purebilibili.core.ui.components.IOSAdaptiveTextField
-import com.android.purebilibili.core.ui.AdaptiveTopAppBar
 import com.android.purebilibili.core.ui.AppShapes
 import com.android.purebilibili.core.ui.AppSurfaceTokens
 import com.android.purebilibili.core.ui.ContainerLevel
-import com.android.purebilibili.core.ui.rememberAppBackIcon
 import kotlinx.serialization.json.JsonPrimitive
 
 /**
@@ -41,42 +40,37 @@ fun JsonPluginEditorScreen(
     var name by remember { mutableStateOf(plugin.name) }
     var description by remember { mutableStateOf(plugin.description) }
     var rules by remember { mutableStateOf(plugin.rules.toMutableList()) }
-    
-    AdaptiveScaffold(
-        topBar = {
-            AdaptiveTopAppBar(
-                title = "编辑 JSON 插件",
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(rememberAppBackIcon(), null)
-                    }
-                },
-                actions = {
-                    IconButton(onClick = {
-                        val updated = plugin.copy(
-                            name = name,
-                            description = description,
-                            rules = rules
-                        )
-                        onSave(updated)
-                    }) {
-                        Icon(CupertinoIcons.Default.Checkmark, null)
-                    }
-                },
-                colors = settingsSubpageTopAppBarColors()
-            )
+    val screenTitle = "编辑 JSON 插件"
+    val bottomContentPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+
+    SettingsPageScaffold(
+        title = screenTitle,
+        onBack = onBack,
+        backContentDescription = "返回",
+        bottomContentPadding = bottomContentPadding,
+        scrollHost = SettingsPageScrollHost.External,
+        header = { SettingsLargeTitleHeader(title = screenTitle) },
+        actions = {
+            IconButton(onClick = {
+                val updated = plugin.copy(
+                    name = name,
+                    description = description,
+                    rules = rules,
+                )
+                onSave(updated)
+            }) {
+                Icon(CupertinoIcons.Default.Checkmark, contentDescription = "保存")
+            }
         },
-        containerColor = settingsSubpageContainerColor()
-    ) { padding ->
+    ) {
         JsonPluginEditorContent(
-            modifier = Modifier.padding(padding),
             name = name,
             onNameChange = { name = it },
             description = description,
             onDescriptionChange = { description = it },
             rules = rules,
             onRulesChange = { rules = it.toMutableList() },
-            pluginType = plugin.type
+            pluginType = plugin.type,
         )
     }
 }

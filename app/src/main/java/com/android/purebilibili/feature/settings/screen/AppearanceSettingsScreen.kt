@@ -61,13 +61,11 @@ import com.android.purebilibili.core.ui.adaptive.resolveDeviceUiProfile
 import com.android.purebilibili.core.ui.adaptive.resolveEffectiveMotionTier
 import com.android.purebilibili.core.ui.blur.BlurIntensity
 import com.android.purebilibili.core.ui.blur.shouldAllowHomeChromeLiquidGlass
-import com.android.purebilibili.core.ui.AdaptiveScaffold
-import com.android.purebilibili.core.ui.AdaptiveTopAppBar
-import com.android.purebilibili.core.ui.globalWallpaperAwareChromeColor
 import com.android.purebilibili.core.ui.getWindowNavigationBarColor
-import com.android.purebilibili.core.ui.rememberAppBackIcon
 import com.android.purebilibili.core.ui.rememberAppSparklesIcon
 import com.android.purebilibili.core.ui.setWindowNavigationBarColor
+import com.android.purebilibili.feature.settings.ui.SettingsLargeTitleHeader
+import com.android.purebilibili.feature.settings.ui.SettingsPageScaffold
 import com.android.purebilibili.core.util.HapticType
 import com.android.purebilibili.core.util.LocalWindowSizeClass
 import com.android.purebilibili.core.util.rememberHapticFeedback
@@ -116,43 +114,36 @@ fun AppearanceSettingsScreen(
         ).coerceIn(0f, 1f)
     val appearanceAnimationSpeed = if (state.dynamicColor) 1.1f else 1f
     
+    val bottomContentPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+
     //  [修复] 设置导航栏透明，确保底部手势栏沉浸式效果
     androidx.compose.runtime.DisposableEffect(Unit) {
         val window = (context as? android.app.Activity)?.window
         val originalNavBarColor = window?.let(::getWindowNavigationBarColor)
             ?: android.graphics.Color.TRANSPARENT
-        
+
         if (window != null) {
             setWindowNavigationBarColor(window, android.graphics.Color.TRANSPARENT)
         }
-        
+
         onDispose {
             if (window != null) {
                 setWindowNavigationBarColor(window, originalNavBarColor)
             }
         }
     }
-    
-    AdaptiveScaffold(
-        topBar = {
-            AdaptiveTopAppBar(
-                title = screenTitle,
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(rememberAppBackIcon(), contentDescription = backLabel)
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = globalWallpaperAwareChromeColor(AppSurfaceTokens.groupedListContainer())
-                )
-            )
-        },
-        containerColor = globalWallpaperAwareChromeColor(AppSurfaceTokens.groupedListContainer()),
-        contentWindowInsets = WindowInsets(0.dp)
-    ) { padding ->
+
+    SettingsPageScaffold(
+        title = screenTitle,
+        onBack = onBack,
+        backContentDescription = backLabel,
+        bottomContentPadding = bottomContentPadding,
+        scrollHost = SettingsPageScrollHost.External,
+        topBarBlurEnabled = state.headerBlurEnabled,
+        header = { SettingsLargeTitleHeader(title = screenTitle) },
+    ) {
         CompositionLocalProvider(LocalSettingsLiquidGlassEnabled provides state.isLiquidGlassEnabled) {
             AppearanceSettingsContent(
-                modifier = Modifier.padding(padding),
                 state = state,
                 onNavigateToIconSettings = onNavigateToIconSettings,
                 onNavigateToAnimationSettings = onNavigateToAnimationSettings,
@@ -162,7 +153,7 @@ fun AppearanceSettingsScreen(
                     if (shouldPromptAppRestartForLanguageChange(state.appLanguage, language)) {
                         pendingLanguageRestart = language
                     }
-                }
+                },
             )
         }
     }

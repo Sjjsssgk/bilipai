@@ -1,7 +1,9 @@
 package com.android.purebilibili.feature.settings.ui
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -26,7 +28,12 @@ import com.android.purebilibili.core.ui.AdaptiveScaffold
 import com.android.purebilibili.core.ui.AdaptiveTopAppBar
 import com.android.purebilibili.core.ui.AppSurfaceTokens
 import com.android.purebilibili.core.ui.TopReadabilityChrome
+import com.android.purebilibili.core.ui.blur.BlurStyles
+import com.android.purebilibili.core.ui.blur.currentUnifiedBlurIntensity
+import com.android.purebilibili.core.ui.blur.hazeSourceCompat
+import com.android.purebilibili.core.ui.blur.rememberRecoverableHazeState
 import com.android.purebilibili.core.ui.rememberAppBackIcon
+import com.android.purebilibili.feature.settings.SettingsPageScrollHost
 import com.android.purebilibili.feature.settings.resolveSettingsVisualSpec
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -38,11 +45,21 @@ internal fun SettingsPageScaffold(
     bottomContentPadding: androidx.compose.ui.unit.Dp,
     modifier: Modifier = Modifier,
     listState: LazyListState = rememberLazyListState(),
+    scrollHost: SettingsPageScrollHost = SettingsPageScrollHost.LazyColumn,
+    topBarBlurEnabled: Boolean = true,
+    actions: @Composable RowScope.() -> Unit = {},
     header: (@Composable () -> Unit)? = null,
     lazyListContent: (LazyListScope.() -> Unit)? = null,
     content: @Composable () -> Unit = {},
 ) {
-    val visualSpec = resolveSettingsVisualSpec()
+    val hazeState = rememberRecoverableHazeState()
+    val blurIntensity = currentUnifiedBlurIntensity()
+    val topBarSurfaceAlpha = if (topBarBlurEnabled) {
+        BlurStyles.getBackgroundAlpha(blurIntensity)
+    } else {
+        0.86f
+    }
+
     AdaptiveScaffold(
         modifier = modifier,
         topBar = {
@@ -50,7 +67,9 @@ internal fun SettingsPageScaffold(
                 TopReadabilityChrome(
                     height = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 64.dp,
                     surfaceColor = AppSurfaceTokens.groupedListContainer(),
-                    surfaceAlpha = 0.86f,
+                    surfaceAlpha = topBarSurfaceAlpha,
+                    hazeState = hazeState,
+                    hazeEnabled = topBarBlurEnabled,
                 )
                 AdaptiveTopAppBar(
                     title = title,
@@ -62,6 +81,7 @@ internal fun SettingsPageScaffold(
                             )
                         }
                     },
+                    actions = actions,
                     colors = TopAppBarDefaults.topAppBarColors(
                         containerColor = Color.Transparent,
                         titleContentColor = MaterialTheme.colorScheme.onSurface,
@@ -74,23 +94,43 @@ internal fun SettingsPageScaffold(
         containerColor = AppSurfaceTokens.groupedListContainer(),
         contentWindowInsets = WindowInsets(0.dp),
     ) { padding ->
-        LazyColumn(
-            state = listState,
-            modifier = Modifier
-                .padding(padding)
-                .fillMaxSize(),
-            contentPadding = PaddingValues(bottom = bottomContentPadding),
-        ) {
-            if (header != null) {
-                item {
-                    header()
+        val scrollModifier = Modifier
+            .padding(padding)
+            .fillMaxSize()
+            .hazeSourceCompat(state = hazeState)
+
+        when (scrollHost) {
+            SettingsPageScrollHost.LazyColumn -> {
+                LazyColumn(
+                    state = listState,
+                    modifier = scrollModifier,
+                    contentPadding = PaddingValues(bottom = bottomContentPadding),
+                ) {
+                    if (header != null) {
+                        item {
+                            header()
+                        }
+                    }
+                    if (lazyListContent != null) {
+                        lazyListContent()
+                    } else {
+                        item {
+                            content()
+                        }
+                    }
                 }
             }
-            if (lazyListContent != null) {
-                lazyListContent()
-            } else {
-                item {
-                    content()
+
+            SettingsPageScrollHost.External -> {
+                Column(modifier = scrollModifier) {
+                    header?.invoke()
+                    Box(
+                        modifier = Modifier
+                            .weight(1f, fill = true)
+                            .fillMaxSize(),
+                    ) {
+                        content()
+                    }
                 }
             }
         }

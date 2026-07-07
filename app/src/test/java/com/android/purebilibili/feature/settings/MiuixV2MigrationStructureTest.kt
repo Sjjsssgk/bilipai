@@ -8,18 +8,17 @@ import kotlin.test.assertTrue
 class MiuixV2MigrationStructureTest {
 
     @Test
-    fun webDavBackupScreen_usesAdaptiveScaffold_notLargeTitleBar() {
+    fun webDavBackupScreen_usesSettingsPageScaffold_notLargeTitleBar() {
         val source = loadSource("app/src/main/java/com/android/purebilibili/feature/settings/webdav/WebDavBackupScreen.kt")
-        assertTrue(source.contains("AdaptiveScaffold("))
-        assertTrue(source.contains("AdaptiveTopAppBar("))
+        assertTrue(source.contains("SettingsPageScaffold("))
         assertFalse(source.contains("iOSLargeTitleBar("))
         assertFalse(source.contains("globalWallpaperAwareBackground("))
     }
 
     @Test
-    fun settingsShareScreen_usesAdaptiveScaffold_notLargeTitleBar() {
+    fun settingsShareScreen_usesSettingsPageScaffold_notLargeTitleBar() {
         val source = loadSource("app/src/main/java/com/android/purebilibili/feature/settings/share/SettingsShareScreen.kt")
-        assertTrue(source.contains("AdaptiveScaffold("))
+        assertTrue(source.contains("SettingsPageScaffold("))
         assertFalse(source.contains("iOSLargeTitleBar("))
     }
 

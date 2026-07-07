@@ -46,6 +46,18 @@ class SettingsNavHierarchyPolicyTest {
                 childRoute = "appearance_settings",
             )
         )
+        assertTrue(
+            isSettingsNavHierarchyTransition(
+                parentRoute = "settings",
+                childRoute = "appearance_settings",
+            )
+        )
+        assertTrue(
+            isSettingsNavHierarchyTransition(
+                parentRoute = "settings",
+                childRoute = "playback_settings",
+            )
+        )
         assertFalse(
             isSettingsNavHierarchyTransition(
                 parentRoute = "home",
@@ -68,8 +80,16 @@ class SettingsNavHierarchyPolicyTest {
             BiliPaiNavRouteTransition.SETTINGS_IOS_PUSH_POP,
             resolveSettingsNavRouteTransition(
                 fromRoute = "appearance_settings",
-                toRoute = "settings_category",
+                toRoute = "settings",
                 forward = false,
+            )
+        )
+        assertEquals(
+            BiliPaiNavRouteTransition.SETTINGS_IOS_PUSH_FORWARD,
+            resolveSettingsNavRouteTransition(
+                fromRoute = "settings",
+                toRoute = "appearance_settings",
+                forward = true,
             )
         )
     }

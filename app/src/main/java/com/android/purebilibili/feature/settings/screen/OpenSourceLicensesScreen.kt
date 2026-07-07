@@ -20,13 +20,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.android.purebilibili.R
-import com.android.purebilibili.core.ui.AdaptiveScaffold
-import com.android.purebilibili.core.ui.AdaptiveTopAppBar
+import com.android.purebilibili.feature.settings.ui.SettingsLargeTitleHeader
+import com.android.purebilibili.feature.settings.ui.SettingsPageScaffold
 import com.android.purebilibili.core.ui.AppShapes
 import com.android.purebilibili.core.ui.AppSurfaceTokens
 import com.android.purebilibili.core.ui.ContainerLevel
-import com.android.purebilibili.core.ui.resolveBottomSafeAreaPadding
-import com.android.purebilibili.core.ui.rememberAppBackIcon
 
 /**
  *  开源许可证数据类
@@ -325,65 +323,51 @@ fun OpenSourceLicensesScreen(
     val uriHandler = LocalUriHandler.current
     val screenTitle = stringResource(R.string.open_source_licenses_title)
     val backLabel = stringResource(R.string.common_back)
-    val contentBottomPadding = resolveBottomSafeAreaPadding(
-        navigationBarsBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding(),
-        extraBottomPadding = 16.dp
-    )
-    
-    AdaptiveScaffold(
-        topBar = {
-            AdaptiveTopAppBar(
-                title = screenTitle,
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(rememberAppBackIcon(), contentDescription = backLabel)
-                    }
-                },
-                colors = settingsSubpageTopAppBarColors()
-            )
-        },
-        containerColor = settingsSubpageContainerColor(),
-        //  [修复] 禁用 Scaffold 默认的 WindowInsets 消耗，避免底部填充
-        contentWindowInsets = WindowInsets(0.dp)
-    ) { padding ->
-        LazyColumn(
-            modifier = Modifier
-                .padding(padding)
-                .fillMaxSize(),
-            contentPadding = PaddingValues(
-                start = 16.dp,
-                top = 16.dp,
-                end = 16.dp,
-                bottom = contentBottomPadding
-            ),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
+    val bottomContentPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+
+    SettingsPageScaffold(
+        title = screenTitle,
+        onBack = onBack,
+        backContentDescription = backLabel,
+        bottomContentPadding = bottomContentPadding,
+        header = { SettingsLargeTitleHeader(title = screenTitle) },
+        lazyListContent = {
             item {
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Column(
+                    modifier = Modifier.padding(
+                        start = 16.dp,
+                        end = 16.dp,
+                        top = 16.dp,
+                    ),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
                     Text(
                         text = "本应用使用了以下开源组件，感谢所有开源贡献者！",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     Text(
                         text = "说明：该列表按当前工程依赖、投屏/测试模块以及明确参考实现整理，可能不包含全部传递依赖或完整法律清单。",
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.padding(bottom = 8.dp)
+                        modifier = Modifier.padding(bottom = 8.dp),
                     )
                 }
             }
-            
+
             items(openSourceLibraries, key = { it.name }) { library ->
                 LicenseCard(
                     library = library,
-                    onClick = { uriHandler.openUri(library.url) }
+                    onClick = { uriHandler.openUri(library.url) },
+                    modifier = Modifier.padding(horizontal = 16.dp),
                 )
             }
-            
-            item { Spacer(modifier = Modifier.height(32.dp)) }
-        }
-    }
+
+            item {
+                Spacer(modifier = Modifier.height(32.dp))
+            }
+        },
+    )
 }
 
 /**
@@ -392,11 +376,13 @@ fun OpenSourceLicensesScreen(
 @Composable
 fun LicenseCard(
     library: OpenSourceLibrary,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     Surface(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
+            .padding(bottom = 8.dp)
             .clip(AppShapes.container(ContainerLevel.Card))
             .clickable(onClick = onClick),
         color = AppSurfaceTokens.cardContainer(),

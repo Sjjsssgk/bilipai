@@ -18,3 +18,8 @@ internal data class SettingsVisualSpec(
 )
 
 internal fun resolveSettingsVisualSpec(): SettingsVisualSpec = SettingsVisualSpec()
+
+internal enum class SettingsPageScrollHost {
+    LazyColumn,
+    External,
+}

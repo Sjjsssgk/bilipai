@@ -33,11 +33,9 @@ import com.android.purebilibili.core.ui.AppSurfaceTokens
 import com.android.purebilibili.core.ui.ContainerLevel
 import com.android.purebilibili.core.ui.adaptive.MotionTier
 import com.android.purebilibili.core.ui.adaptive.resolveDeviceUiProfile
-import com.android.purebilibili.core.ui.AdaptiveScaffold
-import com.android.purebilibili.core.ui.AdaptiveTopAppBar
-import com.android.purebilibili.core.ui.globalWallpaperAwareChromeColor
-import com.android.purebilibili.core.ui.rememberAppBackIcon
 import com.android.purebilibili.core.ui.transition.VIDEO_SHARED_TRANSITION_CUSTOM_MAX_MILLIS
+import com.android.purebilibili.feature.settings.ui.SettingsLargeTitleHeader
+import com.android.purebilibili.feature.settings.ui.SettingsPageScaffold
 import com.android.purebilibili.core.ui.transition.VIDEO_SHARED_TRANSITION_CUSTOM_MIN_MILLIS
 import com.android.purebilibili.core.ui.transition.VideoSharedTransitionSpeed
 import com.android.purebilibili.core.ui.transition.normalizeVideoSharedTransitionCustomDurationMillis
@@ -70,42 +68,21 @@ fun AnimationSettingsScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val screenTitle = stringResource(R.string.animation_effects_title)
     val backLabel = stringResource(R.string.common_back)
-    val scope = rememberCoroutineScope()
-    val blurLevel = when (state.blurIntensity) {
-        BlurIntensity.THIN -> 0.5f
-        BlurIntensity.THICK -> 0.8f
-        BlurIntensity.APPLE_DOCK -> 1.0f  //  玻璃拟态风格
-    }
-    val animationInteractionLevel = (
-        0.2f +
-            if (state.cardAnimationEnabled) 0.25f else 0f +
-            if (state.cardTransitionEnabled) 0.25f else 0f +
-            if (state.bottomBarBlurEnabled) 0.2f else 0f +
-            blurLevel * 0.2f
-        ).coerceIn(0f, 1f)
+    val bottomContentPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
 
-    AdaptiveScaffold(
-        topBar = {
-            AdaptiveTopAppBar(
-                title = screenTitle,
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(rememberAppBackIcon(), contentDescription = backLabel)
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = globalWallpaperAwareChromeColor(AppSurfaceTokens.groupedListContainer())
-                )
-            )
-        },
-        containerColor = globalWallpaperAwareChromeColor(AppSurfaceTokens.groupedListContainer()),
-        contentWindowInsets = WindowInsets(0.dp)
-    ) { padding ->
+    SettingsPageScaffold(
+        title = screenTitle,
+        onBack = onBack,
+        backContentDescription = backLabel,
+        bottomContentPadding = bottomContentPadding,
+        scrollHost = SettingsPageScrollHost.External,
+        topBarBlurEnabled = state.headerBlurEnabled,
+        header = { SettingsLargeTitleHeader(title = screenTitle) },
+    ) {
         CompositionLocalProvider(LocalSettingsLiquidGlassEnabled provides state.isLiquidGlassEnabled) {
             AnimationSettingsContent(
-                modifier = Modifier.padding(padding),
                 state = state,
-                viewModel = viewModel
+                viewModel = viewModel,
             )
         }
     }
