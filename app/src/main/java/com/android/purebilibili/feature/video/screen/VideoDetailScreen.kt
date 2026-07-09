@@ -5013,6 +5013,10 @@ private fun ExternalPlaylistQueueSheet(
 ) {
     if (!visible) return
 
+    BackHandler(enabled = visible) {
+        onDismiss()
+    }
+
     val configuration = LocalConfiguration.current
     val listMaxHeight = resolveExternalPlaylistQueueListMaxHeightDp(configuration.screenHeightDp).dp
     val navigationBarBottomPadding = WindowInsets.navigationBars
