@@ -423,7 +423,8 @@ internal fun shouldClearPendingCrashLogAfterAction(
     action: CrashLogPromptAction
 ): Boolean = action != CrashLogPromptAction.IGNORE
 
-internal fun shouldUseRealtimeSplashBlur(sdkInt: Int): Boolean = sdkInt >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE
+internal fun shouldUseRealtimeSplashBlur(sdkInt: Int): Boolean =
+    sdkInt >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE && sdkInt < 36
 
 internal fun resolveSplashIconResIdForComponentClassName(className: String?): Int {
     return when (className?.substringAfterLast('.')) {

@@ -7,10 +7,15 @@ import org.junit.Test
 class SplashExitAnimationPolicyTest {
 
     @Test
-    fun enablesRealtimeBlurOnlyOnAndroid14AndAbove() {
+    fun enablesRealtimeBlurOnlyOnAndroid14And15() {
         assertFalse(shouldUseRealtimeSplashBlur(31))
         assertFalse(shouldUseRealtimeSplashBlur(33))
         assertTrue(shouldUseRealtimeSplashBlur(34))
+    }
+
+    @Test
+    fun disablesRealtimeBlurOnAndroid16RenderThread() {
+        assertFalse(shouldUseRealtimeSplashBlur(36))
     }
 
     @Test
