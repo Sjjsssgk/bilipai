@@ -37,6 +37,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.purebilibili.feature.article.ArticleDetailScreen
 import com.android.purebilibili.feature.article.shouldUseArticleNoOpRouteTransition
+import com.android.purebilibili.feature.audio.library.resolveListenVideoPlaybackSelection
+import com.android.purebilibili.feature.audio.screen.ListenVideoRoute
 import com.android.purebilibili.feature.home.HomeVideoClickRequest
 import com.android.purebilibili.feature.home.HomeVideoClickSource
 import com.android.purebilibili.feature.home.HomeScreen
@@ -77,7 +79,9 @@ import com.android.purebilibili.feature.list.resolveHistoryNavigationKind
 import com.android.purebilibili.feature.list.resolveHistoryPlaybackCid
 import com.android.purebilibili.feature.list.resolveHistoryResumePositionMs
 import com.android.purebilibili.feature.video.screen.VideoDetailScreen
+import com.android.purebilibili.feature.video.player.ExternalPlaylistSource
 import com.android.purebilibili.feature.video.player.MiniPlayerManager
+import com.android.purebilibili.feature.video.player.PlaylistManager
 import com.android.purebilibili.feature.dynamic.DynamicScreen
 import com.android.purebilibili.feature.dynamic.LocalDynamicScrollChannel
 import com.android.purebilibili.feature.dynamic.components.ImagePreviewOverlayHost
@@ -1509,7 +1513,34 @@ fun AppNavigation(
                                 }
                             )
                         BiliPaiNavEntryContentRole.LISTEN_VIDEO ->
-                            Box(modifier = Modifier.fillMaxSize())
+                            ListenVideoRoute(
+                                onPlayTracks = { tracks, clickedBvid ->
+                                    val selection = resolveListenVideoPlaybackSelection(
+                                        tracks = tracks,
+                                        clickedBvid = clickedBvid
+                                    )
+                                    if (selection.items.isNotEmpty() && selection.startIndex >= 0) {
+                                        PlaylistManager.setExternalPlaylist(
+                                            items = selection.items,
+                                            startIndex = selection.startIndex,
+                                            source = ExternalPlaylistSource.FAVORITE
+                                        )
+                                        val clickedTrack = tracks.firstOrNull {
+                                            it.bvid == clickedBvid
+                                        }
+                                        pushNavigation3Key(
+                                            BiliPaiNavKey.VideoDetail(
+                                                bvid = clickedBvid,
+                                                cid = clickedTrack?.cid ?: 0L,
+                                                coverUrl = clickedTrack?.coverUrl.orEmpty(),
+                                                startAudio = true,
+                                                sourceRoute = ScreenRoutes.ListenVideo.route
+                                            )
+                                        )
+                                    }
+                                },
+                                onLogin = { pushNavigation3Key(BiliPaiNavKey.Login) }
+                            )
                         BiliPaiNavEntryContentRole.HISTORY -> {
                                 val historyViewModel: HistoryViewModel = viewModel()
                                 val historyNavigationScope = rememberCoroutineScope()

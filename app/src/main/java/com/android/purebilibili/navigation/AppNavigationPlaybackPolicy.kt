@@ -51,6 +51,7 @@ internal fun isVideoCardReturnTargetRoute(route: String?): Boolean {
     val routeBase = route?.substringBefore("?") ?: return false
     return routeBase == "main_host" ||
         routeBase == ScreenRoutes.Home.route ||
+        routeBase == ScreenRoutes.ListenVideo.route ||
         routeBase == ScreenRoutes.History.route ||
         routeBase == ScreenRoutes.Favorite.route ||
         routeBase == ScreenRoutes.LikedVideos.route ||

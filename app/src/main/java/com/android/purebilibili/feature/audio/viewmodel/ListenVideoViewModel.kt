@@ -58,6 +58,8 @@ internal class ListenVideoViewModel(
     private var collectedFolders: List<FavFolder> = emptyList()
     private var indexedResources: List<FavoriteData> = emptyList()
     private var indexCompleted = false
+    private var lastDetailTitle = ""
+    private var lastDetailRequest: (suspend () -> Result<List<FavoriteData>>)? = null
 
     fun refresh() {
         refreshJob?.cancel()
@@ -70,6 +72,8 @@ internal class ListenVideoViewModel(
             collectedFolders = emptyList()
             indexedResources = emptyList()
             indexCompleted = false
+            lastDetailTitle = ""
+            lastDetailRequest = null
             _uiState.value = ListenVideoUiState(
                 generation = generation,
                 isLoggedIn = false
@@ -153,6 +157,11 @@ internal class ListenVideoViewModel(
         }
     }
 
+    fun retryDetail() {
+        val request = lastDetailRequest ?: return
+        loadDetail(lastDetailTitle, request)
+    }
+
     fun retryFailedIndex() {
         if (_uiState.value.failedFolderIds.isEmpty()) return
         indexLibrary(onlyFailed = true)
@@ -213,6 +222,8 @@ internal class ListenVideoViewModel(
         title: String,
         request: suspend () -> Result<List<FavoriteData>>
     ) {
+        lastDetailTitle = title
+        lastDetailRequest = request
         detailJob?.cancel()
         val generation = _uiState.value.generation
         _uiState.update {

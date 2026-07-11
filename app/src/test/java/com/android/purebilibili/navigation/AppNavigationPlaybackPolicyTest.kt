@@ -68,6 +68,7 @@ class AppNavigationPlaybackPolicyTest {
         listOf(
             "main_host",
             ScreenRoutes.Home.route,
+            ScreenRoutes.ListenVideo.route,
             ScreenRoutes.History.route,
             ScreenRoutes.Favorite.route,
             ScreenRoutes.WatchLater.route,

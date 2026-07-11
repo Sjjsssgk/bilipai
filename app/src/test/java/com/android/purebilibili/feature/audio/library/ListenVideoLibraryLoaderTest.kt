@@ -121,6 +121,25 @@ class ListenVideoLibraryLoaderTest {
         assertEquals(0, source.ownedFolderRequests)
     }
 
+    @Test
+    fun `detail retry repeats the last playlist request`() = runTest {
+        val source = RetryDetailListenVideoDataSource()
+        val viewModel = ListenVideoViewModel(source, currentMid = { 42L })
+        viewModel.refresh()
+        advanceUntilIdle()
+        val playlist = viewModel.uiState.value.playlists.single()
+
+        viewModel.openPlaylist(playlist)
+        advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.detailError != null)
+
+        viewModel.retryDetail()
+        advanceUntilIdle()
+
+        assertEquals(listOf("BV-RETRY"), viewModel.uiState.value.selectedTracks.map { it.bvid })
+        assertEquals(2, source.detailRequests)
+    }
+
     private fun page(bvid: String, hasMore: Boolean): FavoriteResourceData {
         return FavoriteResourceData(
             medias = listOf(
@@ -206,6 +225,39 @@ private class GatedListenVideoDataSource : ListenVideoLibraryDataSource {
     override suspend fun folderPage(mediaId: Long, page: Int): Result<FavoriteResourceData> {
         if (mediaId == 1L) firstGate.await() else secondGate.await()
         return Result.success(FavoriteResourceData(has_more = false))
+    }
+
+    override suspend fun albumPage(seasonId: Long, page: Int): Result<FavoriteResourceData> {
+        return Result.failure(IllegalStateException("unused"))
+    }
+}
+
+private class RetryDetailListenVideoDataSource : ListenVideoLibraryDataSource {
+    var detailRequests = 0
+        private set
+
+    override suspend fun ownedFolders(mid: Long): Result<List<FavFolder>> {
+        return Result.success(listOf(FavFolder(id = 9L, title = "Retry playlist")))
+    }
+
+    override suspend fun collectedFolders(mid: Long, page: Int): Result<ListenVideoCollectedFoldersPage> {
+        return Result.success(ListenVideoCollectedFoldersPage(emptyList(), hasMore = false))
+    }
+
+    override suspend fun folderPage(mediaId: Long, page: Int): Result<FavoriteResourceData> {
+        detailRequests += 1
+        if (detailRequests == 1) return Result.failure(IOException("first failure"))
+        return Result.success(
+            FavoriteResourceData(
+                medias = listOf(
+                    FavoriteData(
+                        bvid = "BV-RETRY",
+                        title = "Recovered",
+                        upper = Upper(mid = 7L, name = "Artist")
+                    )
+                )
+            )
+        )
     }
 
     override suspend fun albumPage(seasonId: Long, page: Int): Result<FavoriteResourceData> {
