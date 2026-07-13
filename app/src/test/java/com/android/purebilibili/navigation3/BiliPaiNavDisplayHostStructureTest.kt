@@ -151,8 +151,17 @@ class BiliPaiNavDisplayHostStructureTest {
         assertTrue(source.contains("resolveVideoCardTransitionBackgroundGestureBlurProgress"))
         val gestureBlock = source
             .substringAfter("val gestureReturningVideoCard =")
-            .substringBefore("val gestureBackgroundBlurTarget")
+            .substringBefore("val predictiveBackGestureBlurEnabled")
         assertTrue(gestureBlock.contains("isVideoCardTransitionBackgroundGesturePhase"))
+    }
+
+    @Test
+    fun navDisplayHostReadsVideoGestureProgressWithoutPerFrameAnimatableEffects() {
+        val source = navDisplayHostSource()
+
+        assertTrue(source.contains("videoCardBackgroundProgressProvider"))
+        assertTrue(source.contains("progressProvider = videoCardBackgroundProgressProvider"))
+        assertFalse(source.contains("LaunchedEffect(gestureBackgroundBlurTarget)"))
     }
 
     @Test

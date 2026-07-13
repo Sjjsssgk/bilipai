@@ -27,6 +27,7 @@ import com.android.purebilibili.core.theme.*
 import com.android.purebilibili.core.ui.blur.BlurIntensity
 import com.android.purebilibili.core.ui.blur.shouldAllowHomeChromeLiquidGlass
 import com.android.purebilibili.core.store.LiquidGlassMode
+import com.android.purebilibili.core.store.AppNavigationSettings
 import com.android.purebilibili.core.store.SettingsManager
 import com.android.purebilibili.core.ui.AppShapes
 import com.android.purebilibili.core.ui.AppSurfaceTokens
@@ -125,6 +126,8 @@ fun AnimationSettingsContent(
     val bottomBarLiquidGlassEnabled = state.bottomBarLiquidGlassEnabled
     val uiEntranceAnimationEnabled by SettingsManager.getUiEntranceAnimationEnabled(context)
         .collectAsStateWithLifecycle(initialValue = true)
+    val appNavigationSettings by SettingsManager.getAppNavigationSettings(context)
+        .collectAsStateWithLifecycle(initialValue = AppNavigationSettings())
     val effectiveEntranceSpec = rememberEffectiveEntranceMotionSpec()
     // 开关开着、但有效参数被降级为不动画 → 系统减弱动效在生效。
     val entranceDowngradedBySystem = uiEntranceAnimationEnabled && !effectiveEntranceSpec.animate
@@ -223,6 +226,20 @@ fun AnimationSettingsContent(
                             subtitle = "全局视频卡片与详情页的共享元素过渡效果",
                             checked = state.cardTransitionEnabled,
                             onCheckedChange = { viewModel.toggleCardTransition(it) },
+                            iconTint = iOSTeal
+                        )
+                        IOSDivider()
+                        IOSSwitchItem(
+                            icon = rememberSettingsSemanticIcon(SettingsIconRole.CARD_TRANSITION_ANIMATION),
+                            title = "视频详情跟手返回",
+                            subtitle = "从视频详情返回原列表时，卡片随边缘手势收拢",
+                            checked = appNavigationSettings.predictiveBackEnabled,
+                            onCheckedChange = { enabled ->
+                                scope.launch {
+                                    SettingsManager.setPredictiveBackEnabled(context, enabled)
+                                }
+                            },
+                            enabled = state.cardTransitionEnabled,
                             iconTint = iOSTeal
                         )
                         IOSDivider()

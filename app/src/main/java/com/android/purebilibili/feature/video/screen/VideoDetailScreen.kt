@@ -1110,6 +1110,7 @@ fun VideoDetailScreen(
     onMarkReturningFromDetail: () -> Unit = {},
     onClearReturningFromDetail: () -> Unit = {},
     transitionEnabled: Boolean = false,
+    useClassicVideoCardBackHandler: Boolean = false,
     transitionEnterDurationMillis: Int = 320,
     onBack: () -> Unit,
     onHomeClick: () -> Unit = onBack,
@@ -2963,6 +2964,11 @@ fun VideoDetailScreen(
         isPortraitFullscreen = isPortraitFullscreen,
     )
     val localBackEventState = rememberNavigationEventState(NavigationEventInfo.None)
+    BackHandler(
+        enabled = useClassicVideoCardBackHandler &&
+            localBackTarget == VideoDetailLocalBackTarget.NAVIGATE_BACK,
+        onBack = handleBack
+    )
     NavigationBackHandler(
         state = localBackEventState,
         isBackEnabled = localBackTarget != VideoDetailLocalBackTarget.NAVIGATE_BACK,
