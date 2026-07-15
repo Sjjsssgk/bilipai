@@ -1326,7 +1326,8 @@ private fun CdnLineRow(
     diagnostic: CdnLineDiagnostic?,
     onClick: () -> Unit
 ) {
-    val status = diagnostic?.statusLabel ?: "未检测"
+    val status = listOfNotNull(diagnostic?.sourceLabel, diagnostic?.statusLabel ?: "未检测")
+        .joinToString(" · ")
     val host = diagnostic?.host ?: "线路${index + 1}"
     val metric = buildString {
         diagnostic?.latencyMs?.let { append("${it}ms") }

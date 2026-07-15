@@ -10,6 +10,8 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlin.reflect.KClass
 
@@ -41,6 +43,8 @@ object PluginManager {
     /** 插件列表状态流 (用于 Compose 监听) */
     private val _pluginsFlow = MutableStateFlow<List<PluginInfo>>(emptyList())
     val pluginsFlow: StateFlow<List<PluginInfo>> = _pluginsFlow.asStateFlow()
+
+    private val _readyPluginIds = MutableStateFlow<Set<String>>(emptySet())
 
     /** 弹幕插件更新信号（用于播放中热刷新当前弹幕） */
     private val _danmakuPluginUpdateToken = MutableStateFlow(0L)
@@ -74,27 +78,38 @@ object PluginManager {
         }
         
         scope.launch {
-            val storedEnabled = PluginStore.isEnabled(appContext, plugin.id)
-            val enabled = consumePendingPluginEnabledState(
-                pluginId = plugin.id,
-                storedEnabled = storedEnabled,
-                pendingEnabledOverrides = pendingEnabledOverrides
-            )
-            val info = PluginInfo(plugin, enabled)
-            _plugins.add(info)
-            _pluginsFlow.value = _plugins.toList()
-            
-            if (enabled) {
-                try {
-                    plugin.onEnable()
-                    Logger.d(TAG, " Plugin enabled on start: ${plugin.name}")
-                } catch (e: Exception) {
-                    Logger.e(TAG, " Failed to enable plugin: ${plugin.name}", e)
+            try {
+                val storedEnabled = PluginStore.isEnabled(appContext, plugin.id)
+                val enabled = consumePendingPluginEnabledState(
+                    pluginId = plugin.id,
+                    storedEnabled = storedEnabled,
+                    pendingEnabledOverrides = pendingEnabledOverrides
+                )
+                val info = PluginInfo(plugin, enabled)
+                _plugins.add(info)
+                _pluginsFlow.value = _plugins.toList()
+
+                if (enabled) {
+                    try {
+                        plugin.onEnable()
+                        Logger.d(TAG, " Plugin enabled on start: ${plugin.name}")
+                    } catch (e: Exception) {
+                        Logger.e(TAG, " Failed to enable plugin: ${plugin.name}", e)
+                    }
                 }
+
+                Logger.d(TAG, " Plugin registered: ${plugin.name} (enabled=$enabled)")
+            } catch (e: Exception) {
+                Logger.e(TAG, " Failed to register plugin: ${plugin.name}", e)
+            } finally {
+                _readyPluginIds.update { it + plugin.id }
             }
-            
-            Logger.d(TAG, " Plugin registered: ${plugin.name} (enabled=$enabled)")
         }
+    }
+
+    /** Wait until a built-in plugin has finished restoring its persisted configuration. */
+    suspend fun awaitPluginReady(pluginId: String) {
+        _readyPluginIds.first { pluginId in it }
     }
     
     /**

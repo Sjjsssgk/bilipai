@@ -24,6 +24,30 @@ data class CdnRewriteResult(
 )
 
 @Serializable
+data class CdnCustomRule(
+    val pattern: String = "",
+    val replacement: String = "",
+    val enabled: Boolean = true
+)
+
+enum class PlaybackCdnCandidateSource {
+    CUSTOM,
+    REGION,
+    ORIGINAL
+}
+
+data class PlaybackCdnCandidate(
+    val videoUrl: String,
+    val audioUrl: String?,
+    val source: PlaybackCdnCandidateSource
+)
+
+data class CdnCustomRuleValidation(
+    val rule: CdnCustomRule,
+    val error: String? = null
+)
+
+@Serializable
 data class CdnCandidateHealth(
     val host: String = "",
     val firstFrameTimeoutCount: Int = 0,
@@ -65,7 +89,8 @@ data class CdnLineDiagnostic(
     val errorCount: Int,
     val bufferingCount: Int,
     val lastProbeAtMs: Long,
-    val score: Int
+    val score: Int,
+    val sourceLabel: String? = null
 )
 
 data class CdnHostDiagnostic(
@@ -151,6 +176,141 @@ internal fun rewriteCdnUrlCandidates(
         rewrittenCount = (rewritten.size - originalUrls.distinct().size).coerceAtLeast(0)
     )
 }
+
+internal fun buildPlaybackCdnCandidates(
+    videoUrls: List<String>,
+    audioUrls: List<String>
+): List<PlaybackCdnCandidate> {
+    val fallbackAudioUrl = audioUrls.firstOrNull { it.isNotBlank() }
+    return videoUrls.filter { it.isNotBlank() }.mapIndexed { index, videoUrl ->
+        PlaybackCdnCandidate(
+            videoUrl = videoUrl,
+            audioUrl = audioUrls.getOrNull(index)?.takeIf { it.isNotBlank() } ?: fallbackAudioUrl,
+            source = PlaybackCdnCandidateSource.ORIGINAL
+        )
+    }.distinctBy { it.videoUrl to it.audioUrl }
+}
+
+internal fun rewritePlaybackCdnCandidatesForRegion(
+    candidates: List<PlaybackCdnCandidate>,
+    preferredHosts: List<String>
+): List<PlaybackCdnCandidate> {
+    if (preferredHosts.isEmpty()) return candidates
+    return buildList {
+        candidates.forEach { candidate ->
+            preferredHosts.forEach { host ->
+                val videoUrl = rewriteBilivideoHost(candidate.videoUrl, host) ?: candidate.videoUrl
+                val audioUrl = candidate.audioUrl?.let { rewriteBilivideoHost(it, host) ?: it }
+                if (videoUrl != candidate.videoUrl || audioUrl != candidate.audioUrl) {
+                    add(candidate.copy(videoUrl = videoUrl, audioUrl = audioUrl, source = PlaybackCdnCandidateSource.REGION))
+                }
+            }
+        }
+    }.distinctBy { it.videoUrl to it.audioUrl }
+}
+
+internal fun validateCdnCustomRules(rules: List<CdnCustomRule>): List<CdnCustomRuleValidation> {
+    return rules.map { rule ->
+        val error = when {
+            !rule.enabled -> null
+            rule.pattern.isBlank() -> "匹配表达式不能为空"
+            rule.replacement.isBlank() -> "替换内容不能为空"
+            else -> runCatching { Regex(rule.pattern) }
+                .exceptionOrNull()
+                ?.message
+                ?.let { "正则表达式无效：$it" }
+        }
+        CdnCustomRuleValidation(rule = rule, error = error)
+    }
+}
+
+internal fun rewritePlaybackCdnCandidatesForCustomRules(
+    candidates: List<PlaybackCdnCandidate>,
+    rules: List<CdnCustomRule>
+): List<PlaybackCdnCandidate> {
+    return rewritePlaybackCdnCandidatesForCompiledCustomRules(candidates, compileCdnCustomRules(rules))
+}
+
+internal fun compileCdnCustomRules(rules: List<CdnCustomRule>): List<Pair<CdnCustomRule, Regex>> {
+    return validateCdnCustomRules(rules)
+        .filter { it.rule.enabled && it.error == null }
+        .map { it.rule to Regex(it.rule.pattern) }
+}
+
+internal fun rewritePlaybackCdnCandidatesForCompiledCustomRules(
+    candidates: List<PlaybackCdnCandidate>,
+    compiledRules: List<Pair<CdnCustomRule, Regex>>
+): List<PlaybackCdnCandidate> {
+    if (compiledRules.isEmpty()) return emptyList()
+
+    val allowedHosts = candidates.flatMap { listOfNotNull(hostFromCdnUrl(it.videoUrl), it.audioUrl?.let(::hostFromCdnUrl)) }
+        .filter { it.isNotBlank() }
+        .toSet()
+    return candidates.mapNotNull { candidate ->
+        val rewrittenVideo = rewriteCdnUrlByCustomRules(candidate.videoUrl, compiledRules, allowedHosts)
+        val rewrittenAudio = candidate.audioUrl?.let { rewriteCdnUrlByCustomRules(it, compiledRules, allowedHosts) }
+        if (rewrittenVideo == candidate.videoUrl && rewrittenAudio == candidate.audioUrl) {
+            null
+        } else {
+            candidate.copy(
+                videoUrl = rewrittenVideo,
+                audioUrl = rewrittenAudio,
+                source = PlaybackCdnCandidateSource.CUSTOM
+            )
+        }
+    }.distinctBy { it.videoUrl to it.audioUrl }
+}
+
+private fun rewriteCdnUrlByCustomRules(
+    originalUrl: String,
+    rules: List<Pair<CdnCustomRule, Regex>>,
+    allowedHosts: Set<String>
+): String {
+    rules.forEach { (rule, regex) ->
+        if (!regex.containsMatchIn(originalUrl)) return@forEach
+        val replaced = runCatching { regex.replaceFirst(originalUrl, rule.replacement) }.getOrNull()
+            ?: return@forEach
+        if (isAllowedCustomCdnUrl(replaced, allowedHosts)) return replaced
+        return originalUrl
+    }
+    return originalUrl
+}
+
+private fun isAllowedCustomCdnUrl(url: String, allowedHosts: Set<String>): Boolean {
+    val uri = runCatching { URI(url) }.getOrNull() ?: return false
+    val host = uri.host?.lowercase().orEmpty()
+    return uri.scheme.equals("https", ignoreCase = true) &&
+        (host == "bilivideo.com" || host.endsWith(".bilivideo.com") || host in allowedHosts)
+}
+
+internal fun sortPlaybackCdnCandidatesByHealth(
+    candidates: List<PlaybackCdnCandidate>,
+    healthByHost: Map<String, CdnCandidateHealth>
+): List<PlaybackCdnCandidate> {
+    return candidates.mapIndexed { index, candidate ->
+        CdnPlaybackCandidateScore(
+            candidate = candidate,
+            index = index,
+            sourcePriority = when (candidate.source) {
+                PlaybackCdnCandidateSource.CUSTOM -> 3
+                PlaybackCdnCandidateSource.REGION -> 2
+                PlaybackCdnCandidateSource.ORIGINAL -> 1
+            },
+            healthScore = scoreCdnCandidate(healthByHost[hostFromCdnUrl(candidate.videoUrl)])
+        )
+    }.sortedWith(
+        compareByDescending<CdnPlaybackCandidateScore> { it.sourcePriority }
+            .thenByDescending { it.healthScore }
+            .thenBy { it.index }
+    ).map { it.candidate }
+}
+
+private data class CdnPlaybackCandidateScore(
+    val candidate: PlaybackCdnCandidate,
+    val index: Int,
+    val sourcePriority: Int,
+    val healthScore: Int
+)
 
 internal fun sortCdnCandidatesByHealth(
     urls: List<String>,
@@ -246,7 +406,8 @@ internal fun resolveCdnProbeCandidates(
 
 internal fun buildCdnLineDiagnostics(
     urls: List<String>,
-    healthByHost: Map<String, CdnCandidateHealth>
+    healthByHost: Map<String, CdnCandidateHealth>,
+    sources: List<PlaybackCdnCandidateSource> = emptyList()
 ): List<CdnLineDiagnostic> {
     return urls.distinct().mapIndexed { index, url ->
         val host = hostFromCdnUrl(url)
@@ -261,9 +422,16 @@ internal fun buildCdnLineDiagnostics(
             errorCount = errorCount,
             bufferingCount = health?.bufferingCount ?: 0,
             lastProbeAtMs = health?.lastProbeAtMs ?: 0L,
-            score = scoreCdnCandidate(health)
+            score = scoreCdnCandidate(health),
+            sourceLabel = sources.getOrNull(index)?.let(::cdnCandidateSourceLabel)
         )
     }
+}
+
+internal fun cdnCandidateSourceLabel(source: PlaybackCdnCandidateSource): String = when (source) {
+    PlaybackCdnCandidateSource.CUSTOM -> "自定义"
+    PlaybackCdnCandidateSource.REGION -> "属地优选"
+    PlaybackCdnCandidateSource.ORIGINAL -> "原始"
 }
 
 internal fun buildCdnHostDiagnostics(

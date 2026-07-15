@@ -26,7 +26,8 @@ class VideoLoadRequestPolicyTest {
                 loadedBvid = "BV-parent",
                 loadedCid = 123L,
                 loadedAudioLang = null,
-                loadedPlayUrlAvailable = true,
+                loadedDirectPlayUrlAvailable = true,
+                loadedAdaptiveDashSourceAvailable = false,
                 attachedPlayerMediaItemCount = 0,
             )
         )
@@ -45,7 +46,28 @@ class VideoLoadRequestPolicyTest {
                 loadedBvid = "BV-parent",
                 loadedCid = 123L,
                 loadedAudioLang = "japanese",
-                loadedPlayUrlAvailable = true,
+                loadedDirectPlayUrlAvailable = true,
+                loadedAdaptiveDashSourceAvailable = false,
+                attachedPlayerMediaItemCount = 0,
+            )
+        )
+    }
+
+    @Test
+    fun `return restore accepts an adaptive dash source without a direct play url`() {
+        assertTrue(
+            shouldRestoreAttachedPlayerFromLoadedUi(
+                force = false,
+                requestBvid = "BV-parent",
+                requestCid = 0L,
+                requestAudioLang = null,
+                ignoreSavedProgress = false,
+                videoCodecOverride = null,
+                loadedBvid = "BV-parent",
+                loadedCid = 123L,
+                loadedAudioLang = null,
+                loadedDirectPlayUrlAvailable = false,
+                loadedAdaptiveDashSourceAvailable = true,
                 attachedPlayerMediaItemCount = 0,
             )
         )

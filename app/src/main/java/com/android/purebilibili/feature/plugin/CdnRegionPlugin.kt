@@ -2,6 +2,7 @@ package com.android.purebilibili.feature.plugin
 
 import android.content.Context
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -9,6 +10,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -47,10 +50,13 @@ private const val TAG = "CdnRegionPlugin"
 private const val CDN_PROBE_SAMPLE_BYTES = 64 * 1024
 
 data class PlaybackCdnRewriteResult(
-    val videoUrls: List<String>,
-    val audioUrls: List<String>,
+    val candidates: List<PlaybackCdnCandidate>,
     val regionLabel: String?
-)
+) {
+    val videoUrls: List<String> get() = candidates.map { it.videoUrl }
+    val audioUrls: List<String> get() = candidates.map { it.audioUrl.orEmpty() }
+    val sources: List<PlaybackCdnCandidateSource> get() = candidates.map { it.source }
+}
 
 private data class CdnProbeMeasure(
     val success: Boolean,
@@ -70,11 +76,13 @@ interface PlaybackCdnPlugin : Plugin {
     ): PlaybackCdnRewriteResult
 
     fun buildPlaybackCdnDiagnostics(
-        videoUrls: List<String>
+        videoUrls: List<String>,
+        sources: List<PlaybackCdnCandidateSource> = emptyList()
     ): List<CdnLineDiagnostic> = emptyList()
 
     suspend fun probePlaybackCdnCandidates(
-        videoUrls: List<String>
+        videoUrls: List<String>,
+        sources: List<PlaybackCdnCandidateSource> = emptyList()
     ): List<CdnLineDiagnostic> = emptyList()
 
     fun recordPlaybackCdnEvent(
@@ -86,8 +94,8 @@ interface PlaybackCdnPlugin : Plugin {
 class CdnRegionPlugin : PlaybackCdnPlugin {
     override val id: String = CDN_REGION_PLUGIN_ID
     override val name: String = "CDN 属地优选"
-    override val description: String = "按当前 IP 属地把同地区 B 站视频 CDN 排到线路候选前面"
-    override val version: String = "1.1.0"
+    override val description: String = "按当前 IP 属地优选 B 站视频 CDN，并支持高级 URL 替换规则"
+    override val version: String = "1.2.0"
     override val author: String = "BiliPai项目组"
     override val icon: ImageVector = CupertinoIcons.Outlined.ServerRack
     override val capabilityManifest: PluginCapabilityManifest = PluginCapabilityManifest(
@@ -109,10 +117,14 @@ class CdnRegionPlugin : PlaybackCdnPlugin {
     @Volatile
     private var catalog: Map<String, List<String>> = emptyMap()
 
+    @Volatile
+    private var compiledCustomRules: List<Pair<CdnCustomRule, Regex>> = emptyList()
+
     override suspend fun onEnable() {
         val context = PluginManager.getContext()
         catalog = loadCdnRegionCatalog(context)
         cache = CdnRegionPluginStore.read(context)
+        compiledCustomRules = compileCdnCustomRules(cache.customRules)
         AppScope.ioScope.launch {
             delay(1_500L)
             refreshIpLocationIfNeeded()
@@ -129,42 +141,37 @@ class CdnRegionPlugin : PlaybackCdnPlugin {
         audioUrls: List<String>
     ): PlaybackCdnRewriteResult {
         val snapshot = cache
-        if (snapshot.fallbackUsed) {
-            return PlaybackCdnRewriteResult(
-                videoUrls = sortCdnCandidatesByHealth(videoUrls, snapshot.healthByHost),
-                audioUrls = sortCdnCandidatesByHealth(audioUrls, snapshot.healthByHost),
-                regionLabel = null
-            )
-        }
-        val hosts = resolveCdnRegionHosts(
+        val originalCandidates = buildPlaybackCdnCandidates(videoUrls, audioUrls)
+        val customCandidates = rewritePlaybackCdnCandidatesForCompiledCustomRules(
+            candidates = originalCandidates,
+            compiledRules = compiledCustomRules
+        )
+        val hosts = if (snapshot.fallbackUsed) emptyList() else resolveCdnRegionHosts(
             region = snapshot.selectedRegion,
             cachedHosts = snapshot.selectedHosts,
             catalog = catalog,
             isp = snapshot.location.isp
         )
-
-        if (hosts.isEmpty()) {
-            return PlaybackCdnRewriteResult(
-                videoUrls = sortCdnCandidatesByHealth(videoUrls, snapshot.healthByHost),
-                audioUrls = sortCdnCandidatesByHealth(audioUrls, snapshot.healthByHost),
-                regionLabel = null
-            )
-        }
-
-        val rewrittenVideoUrls = rewriteCdnUrlCandidates(videoUrls, hosts).urls
-        val rewrittenAudioUrls = rewriteCdnUrlCandidates(audioUrls, hosts).urls
+        val regionCandidates = rewritePlaybackCdnCandidatesForRegion(originalCandidates, hosts)
+        val candidates = (customCandidates + regionCandidates + originalCandidates)
+            .distinctBy { it.videoUrl to it.audioUrl }
         return PlaybackCdnRewriteResult(
-            videoUrls = sortCdnCandidatesByHealth(rewrittenVideoUrls, snapshot.healthByHost),
-            audioUrls = sortCdnCandidatesByHealth(rewrittenAudioUrls, snapshot.healthByHost),
-            regionLabel = snapshot.selectedRegion.takeIf { it.isNotBlank() }
+            candidates = sortPlaybackCdnCandidatesByHealth(candidates, snapshot.healthByHost),
+            regionLabel = snapshot.selectedRegion.takeIf { hosts.isNotEmpty() }
         )
     }
 
-    override fun buildPlaybackCdnDiagnostics(videoUrls: List<String>): List<CdnLineDiagnostic> {
-        return buildCdnLineDiagnostics(videoUrls, cache.healthByHost)
+    override fun buildPlaybackCdnDiagnostics(
+        videoUrls: List<String>,
+        sources: List<PlaybackCdnCandidateSource>
+    ): List<CdnLineDiagnostic> {
+        return buildCdnLineDiagnostics(videoUrls, cache.healthByHost, sources)
     }
 
-    override suspend fun probePlaybackCdnCandidates(videoUrls: List<String>): List<CdnLineDiagnostic> {
+    override suspend fun probePlaybackCdnCandidates(
+        videoUrls: List<String>,
+        sources: List<PlaybackCdnCandidateSource>
+    ): List<CdnLineDiagnostic> {
         val context = PluginManager.getContext()
         val now = System.currentTimeMillis()
         val current = CdnRegionPluginStore.read(context).also { cache = it }
@@ -190,7 +197,7 @@ class CdnRegionPlugin : PlaybackCdnPlugin {
         val next = current.copy(healthByHost = nextHealth)
         cache = next
         CdnRegionPluginStore.write(context, next)
-        return buildCdnLineDiagnostics(videoUrls, next.healthByHost)
+        return buildCdnLineDiagnostics(videoUrls, next.healthByHost, sources)
     }
 
     override fun recordPlaybackCdnEvent(url: String, event: CdnHealthEvent) {
@@ -215,6 +222,8 @@ class CdnRegionPlugin : PlaybackCdnPlugin {
         var snapshot by remember { mutableStateOf(cache) }
         var catalogSnapshot by remember { mutableStateOf(catalog) }
         var probing by remember { mutableStateOf(false) }
+        var customRules by remember(snapshot.customRules) { mutableStateOf(snapshot.customRules) }
+        var customRuleError by remember { mutableStateOf<String?>(null) }
 
         LaunchedEffect(Unit) {
             catalogSnapshot = catalog.ifEmpty {
@@ -280,6 +289,124 @@ class CdnRegionPlugin : PlaybackCdnPlugin {
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             HorizontalDivider(modifier = Modifier.padding(top = 10.dp))
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                text = "高级 URL 替换",
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                text = "规则按顺序匹配完整播放 URL，仅应用首条命中规则。替换结果必须是 HTTPS 且指向 B 站或当前候选 CDN；失败时会自动回退原始线路。",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            customRules.forEachIndexed { index, rule ->
+                Spacer(modifier = Modifier.height(8.dp))
+                CdnCustomRuleEditor(
+                    index = index,
+                    rule = rule,
+                    canMoveUp = index > 0,
+                    canMoveDown = index < customRules.lastIndex,
+                    onChange = { updated ->
+                        customRules = customRules.toMutableList().also { it[index] = updated }
+                        customRuleError = null
+                    },
+                    onMoveUp = {
+                        customRules = customRules.toMutableList().also { rules ->
+                            rules[index] = rules[index - 1].also { rules[index - 1] = rules[index] }
+                        }
+                    },
+                    onMoveDown = {
+                        customRules = customRules.toMutableList().also { rules ->
+                            rules[index] = rules[index + 1].also { rules[index + 1] = rules[index] }
+                        }
+                    },
+                    onRemove = {
+                        customRules = customRules.filterIndexed { itemIndex, _ -> itemIndex != index }
+                        customRuleError = null
+                    }
+                )
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Row {
+                Button(onClick = {
+                    customRules = customRules + CdnCustomRule(enabled = false)
+                    customRuleError = null
+                }) {
+                    Text("新增规则")
+                }
+                Spacer(modifier = Modifier.padding(horizontal = 4.dp))
+                Button(onClick = {
+                    val error = validateCdnCustomRules(customRules)
+                        .firstOrNull { it.error != null }
+                        ?.error
+                    if (error != null) {
+                        customRuleError = error
+                    } else {
+                        val next = snapshot.copy(customRules = customRules)
+                        snapshot = next
+                        cache = next
+                        compiledCustomRules = compileCdnCustomRules(next.customRules)
+                        scope.launch { CdnRegionPluginStore.write(context, next) }
+                    }
+                }) {
+                    Text("保存规则")
+                }
+            }
+            customRuleError?.let { error ->
+                Text(
+                    text = error,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
+            HorizontalDivider(modifier = Modifier.padding(top = 10.dp))
+        }
+    }
+
+    @Composable
+    private fun CdnCustomRuleEditor(
+        index: Int,
+        rule: CdnCustomRule,
+        canMoveUp: Boolean,
+        canMoveDown: Boolean,
+        onChange: (CdnCustomRule) -> Unit,
+        onMoveUp: () -> Unit,
+        onMoveDown: () -> Unit,
+        onRemove: () -> Unit
+    ) {
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Row {
+                Text(
+                    text = "规则 ${index + 1}",
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Text("启用", style = MaterialTheme.typography.bodySmall)
+                Switch(checked = rule.enabled, onCheckedChange = { onChange(rule.copy(enabled = it)) })
+            }
+            OutlinedTextField(
+                value = rule.pattern,
+                onValueChange = { onChange(rule.copy(pattern = it)) },
+                label = { Text("匹配正则") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            OutlinedTextField(
+                value = rule.replacement,
+                onValueChange = { onChange(rule.copy(replacement = it)) },
+                label = { Text("替换内容") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+            Row {
+                Button(enabled = canMoveUp, onClick = onMoveUp) { Text("上移") }
+                Spacer(modifier = Modifier.padding(horizontal = 2.dp))
+                Button(enabled = canMoveDown, onClick = onMoveDown) { Text("下移") }
+                Spacer(modifier = Modifier.padding(horizontal = 2.dp))
+                Button(onClick = onRemove) { Text("删除") }
+            }
         }
     }
 
@@ -508,7 +635,8 @@ internal data class CdnRegionPluginCache(
     val fallbackUsed: Boolean = false,
     val refreshedAtMs: Long = 0L,
     val lastError: String? = null,
-    val healthByHost: Map<String, CdnCandidateHealth> = emptyMap()
+    val healthByHost: Map<String, CdnCandidateHealth> = emptyMap(),
+    val customRules: List<CdnCustomRule> = emptyList()
 )
 
 internal object CdnRegionPluginStore {

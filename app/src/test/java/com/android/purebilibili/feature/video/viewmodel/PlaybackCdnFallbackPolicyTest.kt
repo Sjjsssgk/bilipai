@@ -3,6 +3,8 @@ package com.android.purebilibili.feature.video.viewmodel
 import com.android.purebilibili.data.model.response.DashAudio
 import com.android.purebilibili.feature.plugin.CdnCandidateHealth
 import com.android.purebilibili.feature.plugin.CdnHealthEvent
+import com.android.purebilibili.feature.plugin.PlaybackCdnCandidate
+import com.android.purebilibili.feature.plugin.PlaybackCdnCandidateSource
 import com.android.purebilibili.feature.plugin.recordCdnHealthEvent
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -10,6 +12,43 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class PlaybackCdnFallbackPolicyTest {
+
+    @Test
+    fun `custom candidate falls back through each original pair once`() {
+        val state = buildPlaybackCdnFallbackState(
+            selectedVideoUrl = "https://cn-hk-eq-01-03.bilivideo.com/video.m4s",
+            selectedAudioUrl = "https://cn-hk-eq-01-03.bilivideo.com/audio.m4s",
+            originalVideoUrl = "https://upos-a.bilivideo.com/video.m4s",
+            originalAudioUrl = "https://upos-a.bilivideo.com/audio.m4s",
+            regionLabel = null,
+            usesCustomRule = true,
+            fallbackCandidates = listOf(
+                PlaybackCdnCandidate(
+                    "https://upos-a.bilivideo.com/video.m4s",
+                    "https://upos-a.bilivideo.com/audio.m4s",
+                    PlaybackCdnCandidateSource.ORIGINAL
+                ),
+                PlaybackCdnCandidate(
+                    "https://upos-b.bilivideo.com/video.m4s",
+                    "https://upos-b.bilivideo.com/audio.m4s",
+                    PlaybackCdnCandidateSource.ORIGINAL
+                )
+            )
+        )
+
+        assertEquals("https://upos-a.bilivideo.com/video.m4s", state.fallbackVideoUrl)
+        val afterFirstFallback = state.advanceFallback(
+            currentFallbackVideoUrl = state.fallbackVideoUrl.orEmpty(),
+            currentFallbackAudioUrl = state.fallbackAudioUrl
+        )
+        assertEquals("https://upos-b.bilivideo.com/video.m4s", afterFirstFallback.fallbackVideoUrl)
+        assertFalse(afterFirstFallback.usesCustomRule)
+        val exhausted = afterFirstFallback.advanceFallback(
+            currentFallbackVideoUrl = afterFirstFallback.fallbackVideoUrl.orEmpty(),
+            currentFallbackAudioUrl = afterFirstFallback.fallbackAudioUrl
+        )
+        assertTrue(exhausted.fallbackConsumed)
+    }
 
     @Test
     fun `cdn rewrite keeps original playback pair as fallback`() {

@@ -243,7 +243,9 @@ internal data class PlaybackCdnFallbackState(
     val selectedAudioUrl: String? = null,
     val fallbackVideoUrl: String? = null,
     val fallbackAudioUrl: String? = null,
+    val fallbackCandidates: List<com.android.purebilibili.feature.plugin.PlaybackCdnCandidate> = emptyList(),
     val regionLabel: String? = null,
+    val usesCustomRule: Boolean = false,
     val fallbackConsumed: Boolean = false
 ) {
     val usesCdnRewrite: Boolean
@@ -252,6 +254,26 @@ internal data class PlaybackCdnFallbackState(
             (selectedVideoUrl != fallbackVideoUrl || selectedAudioUrl != fallbackAudioUrl)
 
     fun markFallbackConsumed(): PlaybackCdnFallbackState = copy(fallbackConsumed = true)
+
+    fun advanceFallback(
+        currentFallbackVideoUrl: String,
+        currentFallbackAudioUrl: String?
+    ): PlaybackCdnFallbackState {
+        val currentIndex = fallbackCandidates.indexOfFirst { candidate ->
+            candidate.videoUrl == currentFallbackVideoUrl && candidate.audioUrl == currentFallbackAudioUrl
+        }
+        val next = fallbackCandidates.drop((currentIndex + 1).coerceAtLeast(0)).firstOrNull { candidate ->
+            candidate.videoUrl != currentFallbackVideoUrl || candidate.audioUrl != currentFallbackAudioUrl
+        }
+        return copy(
+            selectedVideoUrl = currentFallbackVideoUrl,
+            selectedAudioUrl = currentFallbackAudioUrl,
+            fallbackVideoUrl = next?.videoUrl,
+            fallbackAudioUrl = next?.audioUrl,
+            usesCustomRule = false,
+            fallbackConsumed = next == null
+        )
+    }
 
     companion object {
         val Inactive = PlaybackCdnFallbackState()
@@ -264,19 +286,35 @@ internal fun buildPlaybackCdnFallbackState(
     originalVideoUrl: String,
     originalAudioUrl: String?,
     regionLabel: String?,
-    audioFallbackUrl: String? = null
+    audioFallbackUrl: String? = null,
+    fallbackCandidates: List<com.android.purebilibili.feature.plugin.PlaybackCdnCandidate> = emptyList(),
+    usesCustomRule: Boolean = false
 ): PlaybackCdnFallbackState {
     val fallbackAudioUrl = when {
         selectedAudioUrl != originalAudioUrl -> originalAudioUrl
         !audioFallbackUrl.isNullOrBlank() -> audioFallbackUrl
         else -> originalAudioUrl
     }
+    val candidates = fallbackCandidates.ifEmpty {
+        listOf(
+            com.android.purebilibili.feature.plugin.PlaybackCdnCandidate(
+                videoUrl = originalVideoUrl,
+                audioUrl = fallbackAudioUrl,
+                source = com.android.purebilibili.feature.plugin.PlaybackCdnCandidateSource.ORIGINAL
+            )
+        )
+    }
+    val firstFallback = candidates.firstOrNull { candidate ->
+        candidate.videoUrl != selectedVideoUrl || candidate.audioUrl != selectedAudioUrl
+    }
     return PlaybackCdnFallbackState(
         selectedVideoUrl = selectedVideoUrl,
         selectedAudioUrl = selectedAudioUrl,
-        fallbackVideoUrl = originalVideoUrl.takeIf { it.isNotBlank() },
-        fallbackAudioUrl = fallbackAudioUrl,
-        regionLabel = regionLabel
+        fallbackVideoUrl = firstFallback?.videoUrl,
+        fallbackAudioUrl = firstFallback?.audioUrl,
+        fallbackCandidates = candidates,
+        regionLabel = regionLabel,
+        usesCustomRule = usesCustomRule
     )
 }
 
@@ -369,6 +407,7 @@ sealed class PlayerUiState {
         val currentCdnIndex: Int = 0,  // 当前使用的 CDN 索引 (0=主线路)
         val allVideoUrls: List<String> = emptyList(),  // 所有可用视频 URL (主+备用)
         val allAudioUrls: List<String> = emptyList(),   // 所有可用音频 URL (主+备用)
+        val cdnCandidateSources: List<com.android.purebilibili.feature.plugin.PlaybackCdnCandidateSource> = emptyList(),
         val cdnLineDiagnostics: List<CdnLineDiagnostic> = emptyList(),
         val isCdnProbing: Boolean = false,
         // 🖼️ [新增] 视频预览图数据（用于进度条拖动预览）
@@ -834,13 +873,14 @@ internal fun shouldRestoreAttachedPlayerFromLoadedUi(
     loadedBvid: String?,
     loadedCid: Long,
     loadedAudioLang: String?,
-    loadedPlayUrlAvailable: Boolean,
+    loadedDirectPlayUrlAvailable: Boolean,
+    loadedAdaptiveDashSourceAvailable: Boolean,
     attachedPlayerMediaItemCount: Int,
 ): Boolean {
     return !force &&
         !ignoreSavedProgress &&
         videoCodecOverride == null &&
-        loadedPlayUrlAvailable &&
+        (loadedDirectPlayUrlAvailable || loadedAdaptiveDashSourceAvailable) &&
         attachedPlayerMediaItemCount == 0 &&
         loadedBvid == requestBvid &&
         (requestCid <= 0L || loadedCid == requestCid) &&
@@ -1215,6 +1255,7 @@ class PlayerViewModel : ViewModel() {
             cachedDashAudios = nextCachedDashAudios,
             allVideoUrls = cdnSelection.allVideoUrls,
             allAudioUrls = cdnSelection.allAudioUrls,
+            cdnCandidateSources = cdnSelection.candidateSources,
             cdnLineDiagnostics = cdnSelection.lineDiagnostics,
             currentCdnIndex = 0,
             qualityIds = result.qualityIds.ifEmpty { current.qualityIds },
@@ -2510,7 +2551,8 @@ class PlayerViewModel : ViewModel() {
                 loadedBvid = currentSuccess.info.bvid,
                 loadedCid = currentSuccess.info.cid,
                 loadedAudioLang = currentSuccess.currentAudioLang,
-                loadedPlayUrlAvailable = currentSuccess.playUrl.isNotBlank(),
+                loadedDirectPlayUrlAvailable = currentSuccess.playUrl.isNotBlank(),
+                loadedAdaptiveDashSourceAvailable = currentSuccess.adaptiveDashSource != null,
                 attachedPlayerMediaItemCount = player.mediaItemCount,
             )
         ) {
@@ -2794,6 +2836,7 @@ class PlayerViewModel : ViewModel() {
                             allVideoUrls = cdnSelection.allVideoUrls,
 
                             allAudioUrls = cdnSelection.allAudioUrls,
+                            cdnCandidateSources = cdnSelection.candidateSources,
                             cdnLineDiagnostics = cdnSelection.lineDiagnostics,
 
                             // [New] Codec/Audio info
@@ -3208,6 +3251,11 @@ class PlayerViewModel : ViewModel() {
      */
     fun switchCdn() {
         val current = _uiState.value as? PlayerUiState.Success ?: return
+
+        if (playbackCdnFallbackState.usesCdnRewrite) {
+            fallbackFromCdnRewrite(reason = "player_error")
+            return
+        }
         
         if (current.cdnCount <= 1) {
             viewModelScope.launch { toast("没有其他可用线路") }
@@ -6196,6 +6244,7 @@ class PlayerViewModel : ViewModel() {
                         currentCdnIndex = 0,
                         allVideoUrls = cdnSelection.allVideoUrls,
                         allAudioUrls = cdnSelection.allAudioUrls,
+                        cdnCandidateSources = cdnSelection.candidateSources,
                         cdnLineDiagnostics = cdnSelection.lineDiagnostics
                     )
                     monitorPlaybackTransitionPosition(transitionPositionMs)
@@ -6331,6 +6380,7 @@ class PlayerViewModel : ViewModel() {
                             currentCdnIndex = 0,
                             allVideoUrls = cdnSelection.allVideoUrls,
                             allAudioUrls = cdnSelection.allAudioUrls,
+                            cdnCandidateSources = cdnSelection.candidateSources,
                             cdnLineDiagnostics = cdnSelection.lineDiagnostics
                         )
                         monitorPlaybackTransitionPosition(restoredPosition.coerceAtLeast(0L))
@@ -6518,6 +6568,7 @@ class PlayerViewModel : ViewModel() {
                 currentCdnIndex = 0,
                 allVideoUrls = cdnSelection.allVideoUrls,
                 allAudioUrls = cdnSelection.allAudioUrls,
+                cdnCandidateSources = cdnSelection.candidateSources,
                 cdnLineDiagnostics = cdnSelection.lineDiagnostics
             )
             loadPlayerInfo(
@@ -6914,6 +6965,7 @@ class PlayerViewModel : ViewModel() {
         val adaptiveDashSource: AdaptiveDashPlaybackSource?,
         val allVideoUrls: List<String>,
         val allAudioUrls: List<String>,
+        val candidateSources: List<com.android.purebilibili.feature.plugin.PlaybackCdnCandidateSource>,
         val regionLabel: String?,
         val lineDiagnostics: List<CdnLineDiagnostic>,
         val fallbackState: PlaybackCdnFallbackState
@@ -6941,6 +6993,10 @@ class PlayerViewModel : ViewModel() {
             audioUrl = audioUrl,
             cachedDashAudios = cachedDashAudios
         )
+        val originalCandidates = com.android.purebilibili.feature.plugin.buildPlaybackCdnCandidates(
+            videoUrls = rawVideoUrls,
+            audioUrls = rawAudioUrls
+        )
 
         val cdnPlugin = PluginManager
             .getEnabledPlugins(PlaybackCdnPlugin::class)
@@ -6948,9 +7004,12 @@ class PlayerViewModel : ViewModel() {
         val cdnRewrite = cdnPlugin?.rewritePlaybackCandidates(rawVideoUrls, rawAudioUrls)
 
         val allVideoUrls = cdnRewrite?.videoUrls ?: rawVideoUrls
-        val allAudioUrls = cdnRewrite?.audioUrls ?: rawAudioUrls
+        val allAudioUrls = cdnRewrite?.audioUrls ?: buildPlaybackAudioUrlCandidates(
+            audioUrl = audioUrl,
+            cachedDashAudios = cachedDashAudios
+        ).let { urls -> List(allVideoUrls.size) { index -> urls.getOrNull(index).orEmpty() } }
         val selectedVideoUrl = allVideoUrls.firstOrNull() ?: videoUrl
-        val selectedAudioUrl = allAudioUrls.firstOrNull() ?: audioUrl
+        val selectedAudioUrl = allAudioUrls.firstOrNull()?.takeIf { it.isNotBlank() } ?: audioUrl
         val selectedAdaptiveDashSource =
             if (selectedVideoUrl == videoUrl && selectedAudioUrl == audioUrl) {
                 adaptiveDashSource
@@ -6964,15 +7023,22 @@ class PlayerViewModel : ViewModel() {
             adaptiveDashSource = selectedAdaptiveDashSource,
             allVideoUrls = allVideoUrls,
             allAudioUrls = allAudioUrls,
+            candidateSources = cdnRewrite?.sources.orEmpty(),
             regionLabel = cdnRewrite?.regionLabel,
-            lineDiagnostics = cdnPlugin?.buildPlaybackCdnDiagnostics(allVideoUrls).orEmpty(),
+            lineDiagnostics = cdnPlugin?.buildPlaybackCdnDiagnostics(
+                videoUrls = allVideoUrls,
+                sources = cdnRewrite?.sources.orEmpty()
+            ).orEmpty(),
             fallbackState = buildPlaybackCdnFallbackState(
                 selectedVideoUrl = selectedVideoUrl,
                 selectedAudioUrl = selectedAudioUrl,
                 originalVideoUrl = videoUrl,
                 originalAudioUrl = audioUrl,
                 regionLabel = cdnRewrite?.regionLabel,
-                audioFallbackUrl = rawAudioUrls.drop(1).firstOrNull()
+                audioFallbackUrl = rawAudioUrls.drop(1).firstOrNull(),
+                fallbackCandidates = originalCandidates,
+                usesCustomRule = cdnRewrite?.sources?.firstOrNull() ==
+                    com.android.purebilibili.feature.plugin.PlaybackCdnCandidateSource.CUSTOM
             )
         )
     }
@@ -7062,8 +7128,11 @@ class PlayerViewModel : ViewModel() {
                 isPlaying = player.isPlaying
             )
         } ?: true
-        val consumedState = state.markFallbackConsumed()
-        playbackCdnFallbackState = consumedState
+        val nextState = state.advanceFallback(
+            currentFallbackVideoUrl = fallbackVideoUrl,
+            currentFallbackAudioUrl = state.fallbackAudioUrl
+        )
+        playbackCdnFallbackState = nextState
         playbackCdnFallbackJob?.cancel()
         playbackCdnFallbackJob = null
 
@@ -7080,7 +7149,7 @@ class PlayerViewModel : ViewModel() {
             adaptiveDashSource = null,
             startPositionMs = currentPos,
             playWhenReady = playWhenReadyAfterFallback,
-            cdnFallbackState = consumedState
+            cdnFallbackState = nextState
         )
         _uiState.update { current ->
             if (current is PlayerUiState.Success) {
@@ -7097,6 +7166,9 @@ class PlayerViewModel : ViewModel() {
                 current
             }
         }
+        if (state.usesCustomRule) {
+            viewModelScope.launch { toast("自定义线路不可用，已切换至原始线路") }
+        }
     }
 
     private fun hasSelectedAudioTrack(player: Player?): Boolean {
@@ -7109,7 +7181,10 @@ class PlayerViewModel : ViewModel() {
         val current = _uiState.value as? PlayerUiState.Success ?: return
         val plugin = PluginManager.getEnabledPlugins(PlaybackCdnPlugin::class).firstOrNull() ?: return
         plugin.recordPlaybackCdnEvent(current.playUrl, event)
-        val diagnostics = plugin.buildPlaybackCdnDiagnostics(current.allVideoUrls)
+        val diagnostics = plugin.buildPlaybackCdnDiagnostics(
+            videoUrls = current.allVideoUrls,
+            sources = current.cdnCandidateSources
+        )
         if (diagnostics.isNotEmpty()) {
             _uiState.value = current.copy(cdnLineDiagnostics = diagnostics)
         }
@@ -7128,7 +7203,10 @@ class PlayerViewModel : ViewModel() {
         _uiState.value = current.copy(isCdnProbing = true)
         viewModelScope.launch {
             val diagnostics = withContext(Dispatchers.IO) {
-                plugin.probePlaybackCdnCandidates(current.allVideoUrls)
+                plugin.probePlaybackCdnCandidates(
+                    videoUrls = current.allVideoUrls,
+                    sources = current.cdnCandidateSources
+                )
             }
             _uiState.update { state ->
                 if (state is PlayerUiState.Success) {

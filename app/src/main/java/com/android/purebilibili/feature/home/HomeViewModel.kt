@@ -13,6 +13,7 @@ import com.android.purebilibili.core.plugin.RecommendationPluginApi
 import com.android.purebilibili.core.plugin.RecommendationRequest
 import com.android.purebilibili.core.plugin.RecommendationResult
 import com.android.purebilibili.core.plugin.RecommendationSceneSignals
+import com.android.purebilibili.feature.plugin.ADFILTER_PLUGIN_ID
 import com.android.purebilibili.core.store.SettingsManager
 import com.android.purebilibili.core.store.TodayWatchDislikedVideoSnapshot
 import com.android.purebilibili.core.store.TodayWatchFeedbackStore
@@ -1230,6 +1231,9 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                 refreshIdx = maxOf(refreshIdx, recommendRequestIndex)
             }
             
+            // 首批请求可与插件初始化并行；展示前等待关键词配置恢复，避免冷启动露出被屏蔽内容。
+            PluginManager.awaitPluginReady(ADFILTER_PLUGIN_ID)
+
             //  [Feature] 应用屏蔽 + 原生插件 + JSON 规则插件过滤器
             val blockedFiltered = validVideos.filter { video -> video.owner.mid !in blockedMids }
             val feedbackFiltered = filterHomeFeedbackVideos(blockedFiltered)
