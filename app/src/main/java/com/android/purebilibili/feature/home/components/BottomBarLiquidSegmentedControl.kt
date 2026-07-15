@@ -261,22 +261,54 @@ internal fun resolveLiquidReuseLensStrengthScale(
 }
 
 /**
+ * In-content local LayerBackdrop only covers the control (+ bleed). Sample offsets
+ * beyond that record region paint solid black in Miuix — keep amount inside bleed.
+ */
+internal const val LIQUID_REUSE_LOCAL_SAMPLING_BLEED_DP = 12f
+internal const val LIQUID_REUSE_IN_CONTENT_MAX_REFRACTION_HEIGHT_DP = 12f
+internal const val LIQUID_REUSE_IN_CONTENT_MAX_REFRACTION_AMOUNT_DP = 8f
+internal const val LIQUID_REUSE_TOP_TAB_MAX_REFRACTION_HEIGHT_DP = 16f
+internal const val LIQUID_REUSE_TOP_TAB_MAX_REFRACTION_AMOUNT_DP = 10f
+
+/**
+ * Caps for [resolveLiquidReuseLensSpec] so page chrome does not OOB-sample black.
+ * Floating dock keeps uncapped dock bands (full-screen page backdrop).
+ */
+internal fun resolveLiquidReuseLensDistanceCaps(
+    chromeContext: LiquidReuseChromeContext,
+): Pair<Float, Float> = when (chromeContext) {
+    LiquidReuseChromeContext.FLOATING_DOCK ->
+        Float.POSITIVE_INFINITY to Float.POSITIVE_INFINITY
+    LiquidReuseChromeContext.TOP_TAB ->
+        LIQUID_REUSE_TOP_TAB_MAX_REFRACTION_HEIGHT_DP to
+            LIQUID_REUSE_TOP_TAB_MAX_REFRACTION_AMOUNT_DP
+    LiquidReuseChromeContext.IN_CONTENT_SEGMENTED ->
+        LIQUID_REUSE_IN_CONTENT_MAX_REFRACTION_HEIGHT_DP to
+            LIQUID_REUSE_IN_CONTENT_MAX_REFRACTION_AMOUNT_DP
+}
+
+/**
  * Map bottom-bar lens distances onto a reuse surface.
  *
  * [progress] is interaction strength (press / swipe floor / capture full).
  * [heightScale] is [resolveLiquidReuseLensStrengthScale] so short capsules don't
  * get dock-absolute 24.dp bands that swallow the whole pill.
+ * [maxHeightDp]/[maxAmountDp] keep sample offsets inside local capture bleed.
  */
 internal fun resolveLiquidReuseLensSpec(
     baseHeightDp: Float,
     baseAmountDp: Float,
     progress: Float,
     heightScale: Float,
+    maxHeightDp: Float = Float.POSITIVE_INFINITY,
+    maxAmountDp: Float = Float.POSITIVE_INFINITY,
 ): BottomBarBackdropPresetLensSpec {
     val strength = (progress.coerceIn(0f, 1f) * heightScale.coerceIn(0f, 1f))
     return BottomBarBackdropPresetLensSpec(
-        refractionHeightDp = baseHeightDp * strength,
-        refractionAmountDp = baseAmountDp * strength,
+        refractionHeightDp = (baseHeightDp * strength)
+            .coerceAtMost(maxHeightDp.coerceAtLeast(0f)),
+        refractionAmountDp = (baseAmountDp * strength)
+            .coerceAtMost(maxAmountDp.coerceAtLeast(0f)),
     )
 }
 
@@ -284,23 +316,40 @@ internal fun resolveLiquidReuseLensSpec(
 internal fun resolveLiquidReuseCaptureLensSpec(
     progress: Float,
     indicatorHeightDp: Float,
-): BottomBarBackdropPresetLensSpec = resolveLiquidReuseLensSpec(
-    baseHeightDp = 24f,
-    baseAmountDp = 24f,
-    progress = progress,
-    heightScale = resolveLiquidReuseLensStrengthScale(indicatorHeightDp),
-)
+    chromeContext: LiquidReuseChromeContext = LiquidReuseChromeContext.IN_CONTENT_SEGMENTED,
+): BottomBarBackdropPresetLensSpec {
+    val (maxHeight, maxAmount) = resolveLiquidReuseLensDistanceCaps(chromeContext)
+    return resolveLiquidReuseLensSpec(
+        baseHeightDp = 24f,
+        baseAmountDp = 24f,
+        progress = progress,
+        heightScale = resolveLiquidReuseLensStrengthScale(indicatorHeightDp),
+        maxHeightDp = maxHeight,
+        maxAmountDp = maxAmount,
+    )
+}
 
 /** Capsule lens — dock indicator uses 10.dp height / 14.dp amount at full press. */
 internal fun resolveLiquidReuseIndicatorLensSpec(
     progress: Float,
     indicatorHeightDp: Float,
-): BottomBarBackdropPresetLensSpec = resolveLiquidReuseLensSpec(
-    baseHeightDp = 10f,
-    baseAmountDp = 14f,
-    progress = progress,
-    heightScale = resolveLiquidReuseLensStrengthScale(indicatorHeightDp),
-)
+    chromeContext: LiquidReuseChromeContext = LiquidReuseChromeContext.IN_CONTENT_SEGMENTED,
+): BottomBarBackdropPresetLensSpec {
+    val (maxHeight, maxAmount) = resolveLiquidReuseLensDistanceCaps(chromeContext)
+    return resolveLiquidReuseLensSpec(
+        baseHeightDp = 10f,
+        baseAmountDp = 14f,
+        progress = progress,
+        heightScale = resolveLiquidReuseLensStrengthScale(indicatorHeightDp),
+        maxHeightDp = maxHeight,
+        maxAmountDp = maxAmount,
+    )
+}
+
+/** Shell edge lens is only safe when sampling a full-screen page backdrop. */
+internal fun shouldDrawLiquidReuseShellLens(
+    chromeContext: LiquidReuseChromeContext,
+): Boolean = chromeContext == LiquidReuseChromeContext.FLOATING_DOCK
 
 /**
  * Same panel-offset formula as [KernelSuAlignedBottomBar]: fraction of full dock width,
@@ -603,9 +652,14 @@ fun BottomBarLiquidSegmentedControl(
             .height(height)
     ) {
         if (liquidGlassEnabled) {
+            // Expand capture beyond the control so edge lens offsets sample surface fill,
+            // not out-of-bounds black (Miuix LayerBackdrop OOB default).
+            val samplingBleed = LIQUID_REUSE_LOCAL_SAMPLING_BLEED_DP.dp
             Box(
                 modifier = Modifier
-                    .matchParentSize()
+                    .align(Alignment.Center)
+                    .width(maxWidth + samplingBleed * 2)
+                    .height(height + samplingBleed * 2)
                     .clearAndSetSemantics {}
                     .layerBackdrop(localSamplingBackdrop)
             )
@@ -622,6 +676,7 @@ fun BottomBarLiquidSegmentedControl(
             slotWidthDp = slotWidth.value,
             indicatorHeightDp = indicatorHeight.value
         ).dp
+        val liquidReuseChrome = LiquidReuseChromeContext.IN_CONTENT_SEGMENTED
         val indicatorOffset = resolveSegmentedControlIndicatorOffsetDp(
             position = resolveSegmentedControlIndicatorPosition(
                 internalPosition = dragState.value,
@@ -688,10 +743,10 @@ fun BottomBarLiquidSegmentedControl(
         val reuseIdleSurfaceColor = indicatorIdleSurfaceColorOverride
             ?: resolveLiquidReuseIndicatorIdleSurfaceColor(
                 darkTheme = isDarkTheme,
-                chromeContext = LiquidReuseChromeContext.IN_CONTENT_SEGMENTED,
+                chromeContext = liquidReuseChrome,
             )
         val reuseIdleSurfaceMaxAlpha = resolveLiquidReuseIdleSurfaceMaxAlpha(
-            chromeContext = LiquidReuseChromeContext.IN_CONTENT_SEGMENTED,
+            chromeContext = liquidReuseChrome,
         )
         val rawPanelOffsetPx by remember(density, dockWidthPx) {
             derivedStateOf {
@@ -731,21 +786,18 @@ fun BottomBarLiquidSegmentedControl(
             lensProgress = lensProgress,
             isDragging = dragState.isDragging
         )
-        // Dock-identical capture (24/24) and indicator (10/14) bands, height-scaled for this capsule.
-        // After shared 88/56 drag scale the top/bottom edge fraction matches the bottom bar.
+        // Height-scaled dock bands, amount-capped so local sampling + bleed never OOB-blacks.
         val captureLensSpec = resolveLiquidReuseCaptureLensSpec(
             progress = captureLensProgress,
             indicatorHeightDp = resolvedIndicatorHeight.value,
+            chromeContext = liquidReuseChrome,
         )
         val indicatorLensSpec = resolveLiquidReuseIndicatorLensSpec(
             progress = lensProgress,
             indicatorHeightDp = resolvedIndicatorHeight.value,
+            chromeContext = liquidReuseChrome,
         )
-        // Shell uses the same 24.dp dock edge lens, scaled by control height (not only indicator).
-        val shellLensSpec = resolveLiquidReuseCaptureLensSpec(
-            progress = 1f,
-            indicatorHeightDp = height.value,
-        )
+        val drawShellLens = shouldDrawLiquidReuseShellLens(liquidReuseChrome)
         val indicatorIdleSurfaceColor = reuseIdleSurfaceColor
         Box(
             modifier = Modifier
@@ -756,8 +808,8 @@ fun BottomBarLiquidSegmentedControl(
                     containerColor = containerColor,
                     blurEnabled = liquidGlassEnabled,
                     glassEnabled = liquidGlassEnabled,
-                    shellRefractionHeightDp = shellLensSpec.refractionHeightDp,
-                    shellRefractionAmountDp = shellLensSpec.refractionAmountDp,
+                    // Page chrome has no full-screen backdrop under the shell — edge lens paints black.
+                    drawShellLens = drawShellLens,
                     blurRadius = androidNativeTuning.shellBlurRadiusDp.dp,
                     hazeState = null,
                     motionTier = MotionTier.Normal,
@@ -829,7 +881,7 @@ fun BottomBarLiquidSegmentedControl(
                                 drawRect(
                                     resolveLiquidReuseExportSurfaceColor(
                                         shellContainerColor = containerColor,
-                                        chromeContext = LiquidReuseChromeContext.IN_CONTENT_SEGMENTED,
+                                        chromeContext = liquidReuseChrome,
                                     )
                                 )
                             }

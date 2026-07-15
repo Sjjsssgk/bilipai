@@ -102,8 +102,16 @@ class BottomBarLiquidSegmentedControlStructureTest {
 
     @Test
     fun `reuse capture and indicator lens match dock bands at full height`() {
-        val capture = resolveLiquidReuseCaptureLensSpec(progress = 1f, indicatorHeightDp = 56f)
-        val indicator = resolveLiquidReuseIndicatorLensSpec(progress = 1f, indicatorHeightDp = 56f)
+        val capture = resolveLiquidReuseCaptureLensSpec(
+            progress = 1f,
+            indicatorHeightDp = 56f,
+            chromeContext = LiquidReuseChromeContext.FLOATING_DOCK,
+        )
+        val indicator = resolveLiquidReuseIndicatorLensSpec(
+            progress = 1f,
+            indicatorHeightDp = 56f,
+            chromeContext = LiquidReuseChromeContext.FLOATING_DOCK,
+        )
 
         assertEquals(24f, capture.refractionHeightDp, absoluteTolerance = 0.001f)
         assertEquals(24f, capture.refractionAmountDp, absoluteTolerance = 0.001f)
@@ -115,13 +123,56 @@ class BottomBarLiquidSegmentedControlStructureTest {
     fun `reuse lens keeps dock edge-band fraction on compact capsules`() {
         val height = 28f
         val scale = height / 56f
-        val capture = resolveLiquidReuseCaptureLensSpec(progress = 1f, indicatorHeightDp = height)
-        val indicator = resolveLiquidReuseIndicatorLensSpec(progress = 1f, indicatorHeightDp = height)
+        val capture = resolveLiquidReuseCaptureLensSpec(
+            progress = 1f,
+            indicatorHeightDp = height,
+            chromeContext = LiquidReuseChromeContext.FLOATING_DOCK,
+        )
+        val indicator = resolveLiquidReuseIndicatorLensSpec(
+            progress = 1f,
+            indicatorHeightDp = height,
+            chromeContext = LiquidReuseChromeContext.FLOATING_DOCK,
+        )
 
         assertEquals(24f * scale, capture.refractionHeightDp, absoluteTolerance = 0.001f)
         assertEquals(24f * scale, capture.refractionAmountDp, absoluteTolerance = 0.001f)
         assertEquals(10f * scale, indicator.refractionHeightDp, absoluteTolerance = 0.001f)
         assertEquals(14f * scale, indicator.refractionAmountDp, absoluteTolerance = 0.001f)
+    }
+
+    @Test
+    fun `in-content reuse caps refraction amount inside local sampling bleed`() {
+        val capture = resolveLiquidReuseCaptureLensSpec(
+            progress = 1f,
+            indicatorHeightDp = 56f,
+            chromeContext = LiquidReuseChromeContext.IN_CONTENT_SEGMENTED,
+        )
+        val indicator = resolveLiquidReuseIndicatorLensSpec(
+            progress = 1f,
+            indicatorHeightDp = 56f,
+            chromeContext = LiquidReuseChromeContext.IN_CONTENT_SEGMENTED,
+        )
+
+        assertEquals(
+            LIQUID_REUSE_IN_CONTENT_MAX_REFRACTION_HEIGHT_DP,
+            capture.refractionHeightDp,
+            absoluteTolerance = 0.001f
+        )
+        assertEquals(
+            LIQUID_REUSE_IN_CONTENT_MAX_REFRACTION_AMOUNT_DP,
+            capture.refractionAmountDp,
+            absoluteTolerance = 0.001f
+        )
+        assertEquals(10f, indicator.refractionHeightDp, absoluteTolerance = 0.001f)
+        assertEquals(
+            LIQUID_REUSE_IN_CONTENT_MAX_REFRACTION_AMOUNT_DP,
+            indicator.refractionAmountDp,
+            absoluteTolerance = 0.001f
+        )
+        assertTrue(capture.refractionAmountDp <= LIQUID_REUSE_LOCAL_SAMPLING_BLEED_DP)
+        assertTrue(indicator.refractionAmountDp <= LIQUID_REUSE_LOCAL_SAMPLING_BLEED_DP)
+        assertFalse(shouldDrawLiquidReuseShellLens(LiquidReuseChromeContext.IN_CONTENT_SEGMENTED))
+        assertTrue(shouldDrawLiquidReuseShellLens(LiquidReuseChromeContext.FLOATING_DOCK))
     }
 
     @Test
@@ -347,8 +398,10 @@ class BottomBarLiquidSegmentedControlStructureTest {
         assertTrue(source.contains("drawBackdrop("))
         assertTrue(source.contains("resolveLiquidReuseCaptureLensSpec("))
         assertTrue(source.contains("resolveLiquidReuseIndicatorLensSpec("))
-        assertTrue(source.contains("shellRefractionHeightDp = shellLensSpec.refractionHeightDp"))
-        assertTrue(source.contains("shellRefractionAmountDp = shellLensSpec.refractionAmountDp"))
+        assertTrue(source.contains("drawShellLens = drawShellLens"))
+        assertTrue(source.contains("shouldDrawLiquidReuseShellLens("))
+        assertTrue(source.contains("LIQUID_REUSE_LOCAL_SAMPLING_BLEED_DP"))
+        assertTrue(source.contains("chromeContext = liquidReuseChrome"))
         assertTrue(source.contains("resolveSharedLiquidIndicatorLensProgress("))
         assertTrue(source.contains("resolveSharedLiquidIndicatorCaptureLensProgress("))
         // Capture matches bottom-bar export: edge lens only (no depth/dispersion).
@@ -439,6 +492,8 @@ class BottomBarLiquidSegmentedControlStructureTest {
         assertTrue(source.contains("drawRect(localSamplingSurfaceColor)"))
         assertTrue(source.contains(".layerBackdrop(localSamplingBackdrop)"))
         assertTrue(source.contains("fallbackBackdrop = localSamplingBackdrop"))
+        assertTrue(source.contains("maxWidth + samplingBleed * 2"))
+        assertTrue(source.contains("height + samplingBleed * 2"))
         assertTrue(source.contains("backdrop = samplingBackdrop,"))
         assertFalse(source.contains("allowExportOnly"))
         assertTrue(source.contains("forceUnselectedColor = false"))

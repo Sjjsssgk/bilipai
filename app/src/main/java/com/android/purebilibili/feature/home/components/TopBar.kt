@@ -1052,6 +1052,7 @@ private fun LightweightHomeTopTabs(
         val topTabIndicatorLensSpec = resolveLiquidReuseIndicatorLensSpec(
             progress = topTabLensProgress,
             indicatorHeightDp = dockIndicatorHeight.value,
+            chromeContext = LiquidReuseChromeContext.TOP_TAB,
         )
         val topTabCaptureLensProgress = resolveSharedLiquidIndicatorCaptureLensProgress(
             lensProgress = topTabLensProgress,
@@ -1060,6 +1061,7 @@ private fun LightweightHomeTopTabs(
         val topTabCaptureLensSpec = resolveLiquidReuseCaptureLensSpec(
             progress = topTabCaptureLensProgress,
             indicatorHeightDp = dockIndicatorHeight.value,
+            chromeContext = LiquidReuseChromeContext.TOP_TAB,
         )
         val md3LiquidCapsuleTranslationXPx by remember(
             topTabIndicatorPosition,
