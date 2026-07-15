@@ -396,7 +396,7 @@ class BottomBarLiquidSegmentedControlStructureTest {
         assertTrue(source.contains("rememberCombinedBackdrop("))
         assertTrue(source.contains("resolveLiquidReuseIndicatorContentBackdrop("))
         assertTrue(source.contains("contentBackdrop = indicatorContentBackdrop"))
-        // Real page capture stays below the transparent label export.
+        // Real page capture stays below the shell-tinted label export.
         assertTrue(source.contains("useCombined = true"))
         assertTrue(source.contains("backdrop = combinedIndicatorBackdrop ?: samplingBackdrop"))
         assertFalse(source.contains("backdrop ?: tabsBackdrop"))
@@ -452,7 +452,10 @@ class BottomBarLiquidSegmentedControlStructureTest {
         assertTrue(source.contains("dragSelectionEnabled: Boolean = true"))
         assertFalse(source.contains("shellBackdrop"))
         assertFalse(source.contains("miuixBackdrop:"))
-        assertTrue(source.contains("val tabsBackdrop = rememberLayerBackdrop()"))
+        assertTrue(source.contains("val exportSurfaceColor = resolveLiquidReuseExportSurfaceColor("))
+        assertTrue(source.contains("val tabsBackdrop = rememberLayerBackdrop(onDraw = {"))
+        assertTrue(source.contains("drawRect(exportSurfaceColor)"))
+        assertTrue(source.contains("drawContent()"))
         assertTrue(source.contains(".layerBackdrop(tabsBackdrop)"))
         assertTrue(source.contains("val exportTintColor = resolveAndroidNativeExportTintColor("))
         assertTrue(source.contains(".graphicsLayer(colorFilter = ColorFilter.tint(exportTintColor))"))

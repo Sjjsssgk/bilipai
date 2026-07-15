@@ -756,9 +756,16 @@ fun BottomBarLiquidSegmentedControl(
         }
         val panelOffsetPx = presetPanelOffsets.indicatorPanelOffsetPx
         val exportPanelOffsetPx = presetPanelOffsets.exportPanelOffsetPx
-        // Transparent label export is composited above the real page/fallback capture.
-        // Expanded bounds keep the moving label capture available during 88/56 scaling.
-        val tabsBackdrop = rememberLayerBackdrop()
+        // Match the floating dock export: keep its translucent shell tint while the
+        // indicator grows, instead of exposing the darker raw page capture mid-swipe.
+        val exportSurfaceColor = resolveLiquidReuseExportSurfaceColor(
+            shellContainerColor = containerColor,
+            chromeContext = liquidReuseChrome,
+        )
+        val tabsBackdrop = rememberLayerBackdrop(onDraw = {
+            drawRect(exportSurfaceColor)
+            drawContent()
+        })
         // Never self-draw tabsBackdrop on the same node that records it.
         val hasExternalBackdrop = backdropCoversControl && backdrop != null
         val combinedIndicatorBackdrop = if (samplingBackdrop != null) {
@@ -887,10 +894,7 @@ fun BottomBarLiquidSegmentedControl(
                                     },
                                     onDrawSurface = {
                                         drawRect(
-                                            resolveLiquidReuseExportSurfaceColor(
-                                                shellContainerColor = containerColor,
-                                                chromeContext = liquidReuseChrome,
-                                            )
+                                            exportSurfaceColor
                                         )
                                     }
                                 )
