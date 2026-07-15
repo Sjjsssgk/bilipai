@@ -92,29 +92,30 @@ class LiquidReuseIndicatorContentBackdropTest {
     }
 
     @Test
-    fun prefersPageWhenCombinedNotRequested() {
+    fun prefersExportWhenCombinedNotRequested() {
+        // TopBar / v9.9.7 path: BILIPAI samples export capture (surface-filled), not page.
         val result = resolveLiquidReuseIndicatorContentBackdrop(
             pageBackdrop = PageBackdrop,
             exportBackdrop = ExportBackdrop,
             useCombined = false,
             combinedBackdrop = Combined,
         )
-        assertSame(PageBackdrop, result)
+        assertSame(ExportBackdrop, result)
     }
 
     @Test
-    fun neverFallsBackToExportOnlyToAvoidBlackSample() {
+    fun fallsBackToExportWhenCombinedMissing() {
         val result = resolveLiquidReuseIndicatorContentBackdrop(
             pageBackdrop = null,
             exportBackdrop = ExportBackdrop,
             useCombined = true,
             combinedBackdrop = null,
         )
-        assertNull(result)
+        assertSame(ExportBackdrop, result)
     }
 
     @Test
-    fun returnsNullWhenNoPage() {
+    fun returnsNullWhenNoSampleSource() {
         val result = resolveLiquidReuseIndicatorContentBackdrop(
             pageBackdrop = null,
             exportBackdrop = null,
@@ -122,5 +123,16 @@ class LiquidReuseIndicatorContentBackdropTest {
             combinedBackdrop = null,
         )
         assertNull(result)
+    }
+
+    @Test
+    fun prefersPageOnlyWhenExportMissing() {
+        val result = resolveLiquidReuseIndicatorContentBackdrop(
+            pageBackdrop = PageBackdrop,
+            exportBackdrop = null,
+            useCombined = false,
+            combinedBackdrop = null,
+        )
+        assertSame(PageBackdrop, result)
     }
 }

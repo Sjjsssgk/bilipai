@@ -163,7 +163,12 @@ class BottomBarLiquidSegmentedControlStructureTest {
             capture.refractionAmountDp,
             absoluteTolerance = 0.001f
         )
-        assertEquals(10f, indicator.refractionHeightDp, absoluteTolerance = 0.001f)
+        // Indicator base 10/14 also hits the same in-content distance caps.
+        assertEquals(
+            LIQUID_REUSE_IN_CONTENT_MAX_REFRACTION_HEIGHT_DP,
+            indicator.refractionHeightDp,
+            absoluteTolerance = 0.001f
+        )
         assertEquals(
             LIQUID_REUSE_IN_CONTENT_MAX_REFRACTION_AMOUNT_DP,
             indicator.refractionAmountDp,
@@ -392,6 +397,9 @@ class BottomBarLiquidSegmentedControlStructureTest {
         assertTrue(source.contains("rememberCombinedBackdrop("))
         assertTrue(source.contains("resolveLiquidReuseIndicatorContentBackdrop("))
         assertTrue(source.contains("contentBackdrop = indicatorContentBackdrop"))
+        // In-content BILIPAI samples export only (TopBar / v9.9.7); Combined is not content.
+        assertTrue(source.contains("useCombined = false"))
+        assertTrue(source.contains("backdrop = combinedIndicatorBackdrop ?: samplingBackdrop"))
         assertFalse(source.contains("backdrop ?: tabsBackdrop"))
         assertFalse(source.contains("containerBackdrop = backdrop ?: tabsBackdrop"))
         assertTrue(source.contains("shouldDrawSegmentedControlExportCaptureBackdrop("))
@@ -404,6 +412,9 @@ class BottomBarLiquidSegmentedControlStructureTest {
         assertTrue(source.contains("chromeContext = liquidReuseChrome"))
         assertTrue(source.contains("resolveSharedLiquidIndicatorLensProgress("))
         assertTrue(source.contains("resolveSharedLiquidIndicatorCaptureLensProgress("))
+        // In-content capsule: no multi-offset depth/chroma (OOB black past local bleed).
+        assertTrue(source.contains("lensDepthEffect = false"))
+        assertTrue(source.contains("lensChromaticAberration = 0f"))
         // Capture matches bottom-bar export: edge lens only (no depth/dispersion).
         assertFalse(
             source.contains(

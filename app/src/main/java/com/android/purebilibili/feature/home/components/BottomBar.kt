@@ -3796,6 +3796,9 @@ internal fun BoxScope.KernelSuMiuixBottomBarIndicatorLayer(
     indicatorAlignment: Alignment = Alignment.CenterStart,
     /** Caps idle onDrawSurface overlay so in-content reuse still shows Combined sample. */
     idleSurfaceMaxAlpha: Float = 1f,
+    /** Page chrome should disable depth/chroma — multi-offset samples easily OOB-black. */
+    lensDepthEffect: Boolean = true,
+    lensChromaticAberration: Float = 0.5f,
 ) {
     if (!visible) return
     val rawIndicatorLayerTransform = if (indicatorEffectsEnabled) {
@@ -3825,6 +3828,7 @@ internal fun BoxScope.KernelSuMiuixBottomBarIndicatorLayer(
         backdrop
     }
     val idleOverlayCap = idleSurfaceMaxAlpha.coerceIn(0f, 1f)
+    val chromatic = lensChromaticAberration.coerceIn(0f, 1f)
     Box(
         modifier = Modifier
             .alpha(dockContentAlpha)
@@ -3846,12 +3850,17 @@ internal fun BoxScope.KernelSuMiuixBottomBarIndicatorLayer(
                         backdrop = indicatorBackdrop,
                         shape = { shellShape },
                         effects = {
-                            if (shouldUseBottomBarIndicatorLens(liquidGlassPreset)) {
+                            if (shouldUseBottomBarIndicatorLens(liquidGlassPreset) &&
+                                (
+                                    indicatorLensSpec.refractionHeightDp > 0.001f ||
+                                        indicatorLensSpec.refractionAmountDp > 0.001f
+                                    )
+                            ) {
                                 miuixLens(
                                     refractionHeight = indicatorLensSpec.refractionHeightDp.dp.toPx(),
                                     refractionAmount = indicatorLensSpec.refractionAmountDp.dp.toPx(),
-                                    depthEffect = true,
-                                    chromaticAberration = 0.5f
+                                    depthEffect = lensDepthEffect,
+                                    chromaticAberration = chromatic,
                                 )
                             }
                         },

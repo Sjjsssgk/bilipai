@@ -196,14 +196,17 @@ internal fun shouldDrawSegmentedControlExportCaptureBackdrop(
 }
 
 /**
- * Dock-aligned sample source for [KernelSuMiuixBottomBarIndicatorLayer].
+ * Sample source for [KernelSuMiuixBottomBarIndicatorLayer] under BILIPAI_TUNED.
  *
- * With BILIPAI_TUNED / IOS26_REFINED the indicator samples [contentBackdrop] only.
- * Prefer Combined(page, export) so the capsule is frosted page + refracted glyphs.
- * Never pass export-only when glass is always on — empty LayerBackdrop samples as black.
+ * The indicator samples [contentBackdrop] only. Match TopBar / v9.9.7:
+ * prefer export capture with a stable surface fill under monochrome glyphs.
  *
- * [combinedBackdrop] must be a pre-built Combined(page, export) when both exist and
- * [useCombined] is true (use [rememberCombinedBackdrop] at the call site).
+ * Combined(page, export) is unsafe for in-content chrome: the page LayerBackdrop
+ * often does not cover the capsule (list starts below the tab strip), and Miuix
+ * paints those OOB samples solid black. Export-only with surface fill avoids that.
+ *
+ * [useCombined] remains for floating dock / full-screen page backdrops only.
+ * [combinedBackdrop] must be pre-built via [rememberCombinedBackdrop] when used.
  */
 internal fun resolveLiquidReuseIndicatorContentBackdrop(
     pageBackdrop: Backdrop?,
@@ -214,7 +217,8 @@ internal fun resolveLiquidReuseIndicatorContentBackdrop(
     if (useCombined && pageBackdrop != null && exportBackdrop != null && combinedBackdrop != null) {
         return combinedBackdrop
     }
-    // Prefer page alone over export-only to avoid black empty export sampling.
+    // Export-only (surface-filled) is the safe BILIPAI / top-tab sample source.
+    if (exportBackdrop != null) return exportBackdrop
     if (pageBackdrop != null) return pageBackdrop
     return null
 }
@@ -263,10 +267,13 @@ internal fun resolveLiquidReuseLensStrengthScale(
 /**
  * In-content local LayerBackdrop only covers the control (+ bleed). Sample offsets
  * beyond that record region paint solid black in Miuix — keep amount inside bleed.
+ *
+ * Bleed must cover indicator drag-scale (88/56 ≈ +28.5% per side on a full-width
+ * capsule) plus refraction amount; 12dp was insufficient and showed black lobes.
  */
-internal const val LIQUID_REUSE_LOCAL_SAMPLING_BLEED_DP = 12f
-internal const val LIQUID_REUSE_IN_CONTENT_MAX_REFRACTION_HEIGHT_DP = 12f
-internal const val LIQUID_REUSE_IN_CONTENT_MAX_REFRACTION_AMOUNT_DP = 8f
+internal const val LIQUID_REUSE_LOCAL_SAMPLING_BLEED_DP = 40f
+internal const val LIQUID_REUSE_IN_CONTENT_MAX_REFRACTION_HEIGHT_DP = 6f
+internal const val LIQUID_REUSE_IN_CONTENT_MAX_REFRACTION_AMOUNT_DP = 4f
 internal const val LIQUID_REUSE_TOP_TAB_MAX_REFRACTION_HEIGHT_DP = 16f
 internal const val LIQUID_REUSE_TOP_TAB_MAX_REFRACTION_AMOUNT_DP = 10f
 
@@ -750,17 +757,20 @@ fun BottomBarLiquidSegmentedControl(
             drawRect(localSamplingSurfaceColor)
             drawContent()
         })
-        // Prefer Combined(stable surface, export) for Miuix OOB safety; never self-draw tabsBackdrop.
+        // Never self-draw tabsBackdrop on the same node that records it.
+        // Combined stays for the non-BILIPAI backdrop param only — contentBackdrop is export.
         val hasExternalBackdrop = samplingBackdrop != null
         val combinedIndicatorBackdrop = if (samplingBackdrop != null) {
             rememberCombinedBackdrop(samplingBackdrop, tabsBackdrop)
         } else {
             null
         }
+        // Match TopBar: BILIPAI samples export only. Page Combined OOB-blacks when the
+        // list/page LayerBackdrop does not cover this in-content strip.
         val indicatorContentBackdrop = resolveLiquidReuseIndicatorContentBackdrop(
             pageBackdrop = samplingBackdrop,
             exportBackdrop = tabsBackdrop,
-            useCombined = hasExternalBackdrop,
+            useCombined = false,
             combinedBackdrop = combinedIndicatorBackdrop,
         ) ?: tabsBackdrop
         val captureLensProgress = resolveSharedLiquidIndicatorCaptureLensProgress(
@@ -906,7 +916,8 @@ fun BottomBarLiquidSegmentedControl(
             shellShape = indicatorShape,
             liquidGlassPreset = homeSettings.bottomBarLiquidGlassPreset,
             contentBackdrop = indicatorContentBackdrop,
-            backdrop = samplingBackdrop,
+            // Non-BILIPAI presets sample this; Combined keeps page+export when available.
+            backdrop = combinedIndicatorBackdrop ?: samplingBackdrop,
             indicatorLensSpec = indicatorLensSpec,
             effectivePressProgress = lensProgress,
             indicatorIdleSurfaceColor = indicatorIdleSurfaceColor,
@@ -919,6 +930,9 @@ fun BottomBarLiquidSegmentedControl(
             bottomBarMotionSpec = motionSpec,
             isDarkTheme = isDarkTheme,
             idleSurfaceMaxAlpha = reuseIdleSurfaceMaxAlpha,
+            // Multi-offset depth/chroma samples past local bleed → black lobes on video tabs.
+            lensDepthEffect = false,
+            lensChromaticAberration = 0f,
         )
 
         // 4) Invisible hit / drag layer above everything.
