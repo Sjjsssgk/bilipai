@@ -375,6 +375,16 @@ internal fun shouldForceBackPreviewPlayerCover(
     return keepLoadedContentForBackPreview && !bindLivePlayerForBackPreview
 }
 
+internal fun shouldAnimateVideoDetailSecondaryContent(
+    detailShellSharedBoundsEnabled: Boolean,
+    hasAnimatedVisibilityScope: Boolean,
+    keepLoadedContentForBackPreview: Boolean,
+): Boolean {
+    return detailShellSharedBoundsEnabled &&
+        hasAnimatedVisibilityScope &&
+        !keepLoadedContentForBackPreview
+}
+
 internal fun resolveCoverTakeoverDelayBeforeBackNavigationMillis(): Long {
     return COVER_TAKEOVER_PRE_BACK_DELAY_MILLIS
 }
@@ -1955,10 +1965,13 @@ fun VideoDetailScreen(
             enterDurationMillis = homeSharedTransitionMotionSpec.contentDurationMillis
         )
     }
-    val detailSecondaryContentAlpha = if (
-        detailShellSharedBoundsEnabled && rootAnimatedVisibilityScope != null
+    val detailSecondaryContentAlpha = if (shouldAnimateVideoDetailSecondaryContent(
+            detailShellSharedBoundsEnabled = detailShellSharedBoundsEnabled,
+            hasAnimatedVisibilityScope = rootAnimatedVisibilityScope != null,
+            keepLoadedContentForBackPreview = keepLoadedContentForBackPreview,
+        )
     ) {
-        rootAnimatedVisibilityScope.transition.animateFloat(
+        requireNotNull(rootAnimatedVisibilityScope).transition.animateFloat(
             transitionSpec = {
                 if (targetState == EnterExitState.PostExit) {
                     tween(

@@ -9,6 +9,28 @@ import java.io.File
 class VideoDetailReturnCoverPolicyTest {
 
     @Test
+    fun `immediate video back target keeps secondary content visible`() {
+        assertFalse(
+            shouldAnimateVideoDetailSecondaryContent(
+                detailShellSharedBoundsEnabled = true,
+                hasAnimatedVisibilityScope = true,
+                keepLoadedContentForBackPreview = true,
+            )
+        )
+    }
+
+    @Test
+    fun `normal card detail transition still animates secondary content`() {
+        assertTrue(
+            shouldAnimateVideoDetailSecondaryContent(
+                detailShellSharedBoundsEnabled = true,
+                hasAnimatedVisibilityScope = true,
+                keepLoadedContentForBackPreview = false,
+            )
+        )
+    }
+
+    @Test
     fun `predictive cancel keeps the cover until the detail exit transition has settled`() {
         assertTrue(
             shouldTreatVideoDetailCardExitAsReturning(
