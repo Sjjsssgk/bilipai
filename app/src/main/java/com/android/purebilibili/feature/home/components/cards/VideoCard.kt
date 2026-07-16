@@ -72,6 +72,7 @@ import com.android.purebilibili.core.ui.transition.LocalVideoSharedTransitionSpe
 import com.android.purebilibili.core.ui.transition.VideoSharedTransitionMotionSpec
 import com.android.purebilibili.core.ui.transition.VideoSharedTransitionVisualSpec
 import com.android.purebilibili.core.ui.transition.resolveVideoCardSharedTransitionMotionSpec
+import com.android.purebilibili.core.ui.transition.resolveVideoSharedCoverCacheKey
 import com.android.purebilibili.core.ui.transition.resolveVideoSharedTransitionOwnership
 import com.android.purebilibili.core.ui.transition.resolveVideoSharedTransitionPlaybackIntent
 import com.android.purebilibili.core.ui.transition.resolveVideoSharedTransitionVisualSpec
@@ -136,8 +137,7 @@ internal fun resolveVideoCardCoverCacheKey(
             "fallback_${video.id.coerceAtLeast(0L)}_${video.cid.coerceAtLeast(0L)}_${video.title.hashCode()}"
         }
     }
-    val qualityTag = if (useLowQualityCover) "s" else "n"
-    return "cover_${normalizedIdentity}_${qualityTag}"
+    return resolveVideoSharedCoverCacheKey(normalizedIdentity, useLowQualityCover)
 }
 
 private data class VideoCardTexts(

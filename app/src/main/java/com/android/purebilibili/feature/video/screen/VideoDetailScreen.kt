@@ -174,6 +174,7 @@ import com.android.purebilibili.core.ui.transition.VideoSharedTransitionPlayback
 import com.android.purebilibili.core.ui.transition.resolveVideoCardSharedTransitionMotionSpec
 import com.android.purebilibili.core.ui.transition.resolveVideoCardSharedTransitionEnterEasing
 import com.android.purebilibili.core.ui.transition.resolveVideoCardSharedTransitionReturnEasing
+import com.android.purebilibili.core.ui.transition.resolveVideoSharedCoverCacheKey
 import com.android.purebilibili.core.ui.transition.resolveVideoSharedTransitionPlaybackIntent
 import com.android.purebilibili.core.ui.transition.resolveVideoSharedTransitionSourceCornerDp
 import com.android.purebilibili.core.ui.transition.resolveVideoSharedTransitionVisualSpec
@@ -3816,6 +3817,25 @@ fun VideoDetailScreen(
                                 ""
                             }
                         }
+                        val sharedCoverCacheKey = remember(bvid) {
+                            resolveVideoSharedCoverCacheKey(bvid)
+                        }
+                        val residentCoverImageRequest = remember(
+                            context,
+                            crossfadeCoverUrl,
+                            sharedCoverCacheKey,
+                        ) {
+                            if (crossfadeCoverUrl.isBlank()) {
+                                null
+                            } else {
+                                coil.request.ImageRequest.Builder(context)
+                                    .data(crossfadeCoverUrl)
+                                    .crossfade(false)
+                                    .memoryCacheKey(sharedCoverCacheKey)
+                                    .diskCacheKey(sharedCoverCacheKey)
+                                    .build()
+                            }
+                        }
 
                         //  播放器容器按当前顶部避让高度计算，避免隐藏状态栏后留下黑边。
                         //  [修复] 始终保持播放器在 Composition 中，避免隐藏时重新创建导致重载
@@ -3850,12 +3870,9 @@ fun VideoDetailScreen(
                                 }
                         ) {
                             // 前台常驻封面叠层，返回时只改 alpha，避免临时解码/淡入打断共享元素动画。
-                            if (crossfadeCoverUrl.isNotBlank()) {
+                            if (residentCoverImageRequest != null) {
                                 AsyncImage(
-                                    model = coil.request.ImageRequest.Builder(LocalContext.current)
-                                        .data(crossfadeCoverUrl)
-                                        .crossfade(false)
-                                        .build(),
+                                    model = residentCoverImageRequest,
                                     contentDescription = "cover",
                                     modifier = Modifier
                                         .fillMaxSize()

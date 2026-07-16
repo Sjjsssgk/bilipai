@@ -75,7 +75,9 @@ private const val DEFAULT_VIDEO_CARD_CORNER_DP = 12
 private const val DEFAULT_VIDEO_PLAYER_CORNER_DP = 12
 private const val DYNAMIC_VIDEO_CARD_CORNER_DP = 10
 private const val WATCH_LATER_VIDEO_CARD_CORNER_DP = 8
-private const val VIDEO_CARD_HERO_SPRING_DAMPING_RATIO = 0.79f
+private const val VIDEO_CARD_HERO_ENTER_SPRING_DAMPING_RATIO = 0.79f
+// 收回保留 Hero 的速度感，但提高阻尼以减少落点越界和二次弹跳。
+private const val VIDEO_CARD_RETURN_SPRING_DAMPING_RATIO = 0.86f
 private const val VIDEO_CARD_HERO_SPRING_REFERENCE_STIFFNESS = 250f
 private const val VIDEO_CARD_HERO_SPRING_REFERENCE_DURATION_MILLIS = 400f
 private const val VIDEO_CARD_HERO_SPRING_MIN_STIFFNESS = 50f
@@ -115,7 +117,8 @@ internal data class VideoSharedTransitionMotionSpec(
     val contentDurationMillis: Int,
     val contentSlideOffsetDp: Int,
     val contentInitialScale: Float,
-    val spatialDampingRatio: Float,
+    val enterSpatialDampingRatio: Float,
+    val returnSpatialDampingRatio: Float,
     val spatialStiffness: Float,
     val enterAlphaEasing: Easing,
     val returnAlphaEasing: Easing
@@ -157,6 +160,14 @@ internal fun resolveVideoSharedTransitionSpatialStiffness(durationMillis: Int): 
             VIDEO_CARD_HERO_SPRING_MIN_STIFFNESS,
             VIDEO_CARD_HERO_SPRING_MAX_STIFFNESS
         )
+}
+
+internal fun resolveVideoSharedCoverCacheKey(
+    videoIdentity: String,
+    useLowQualityCover: Boolean = false,
+): String {
+    val qualityTag = if (useLowQualityCover) "s" else "n"
+    return "cover_${videoIdentity.trim()}_${qualityTag}"
 }
 
 internal fun resolveVideoSharedTransitionDirection(
@@ -378,7 +389,8 @@ internal fun resolveVideoCardSharedTransitionMotionSpec(
             contentDurationMillis = 0,
             contentSlideOffsetDp = 0,
             contentInitialScale = 1f,
-            spatialDampingRatio = VIDEO_CARD_HERO_SPRING_DAMPING_RATIO,
+            enterSpatialDampingRatio = VIDEO_CARD_HERO_ENTER_SPRING_DAMPING_RATIO,
+            returnSpatialDampingRatio = VIDEO_CARD_RETURN_SPRING_DAMPING_RATIO,
             spatialStiffness = VIDEO_CARD_HERO_SPRING_REFERENCE_STIFFNESS,
             enterAlphaEasing = VIDEO_CARD_ALPHA_EASING,
             returnAlphaEasing = VIDEO_CARD_ALPHA_EASING
@@ -394,7 +406,8 @@ internal fun resolveVideoCardSharedTransitionMotionSpec(
         contentDurationMillis = resolveVideoSharedTransitionContentDurationMillis(durationMillis),
         contentSlideOffsetDp = HOME_DETAIL_REVEAL_SLIDE_OFFSET_DP,
         contentInitialScale = HOME_DETAIL_REVEAL_INITIAL_SCALE,
-        spatialDampingRatio = VIDEO_CARD_HERO_SPRING_DAMPING_RATIO,
+        enterSpatialDampingRatio = VIDEO_CARD_HERO_ENTER_SPRING_DAMPING_RATIO,
+        returnSpatialDampingRatio = VIDEO_CARD_RETURN_SPRING_DAMPING_RATIO,
         spatialStiffness = resolveVideoSharedTransitionSpatialStiffness(durationMillis),
         enterAlphaEasing = VIDEO_CARD_ALPHA_EASING,
         returnAlphaEasing = VIDEO_CARD_ALPHA_EASING
@@ -422,7 +435,8 @@ internal fun resolveVideoMetadataSharedTransitionMotionSpec(
         contentDurationMillis = durationMillis,
         contentSlideOffsetDp = 0,
         contentInitialScale = 1f,
-        spatialDampingRatio = VIDEO_CARD_HERO_SPRING_DAMPING_RATIO,
+        enterSpatialDampingRatio = VIDEO_CARD_HERO_ENTER_SPRING_DAMPING_RATIO,
+        returnSpatialDampingRatio = VIDEO_CARD_RETURN_SPRING_DAMPING_RATIO,
         spatialStiffness = resolveVideoSharedTransitionSpatialStiffness(durationMillis),
         enterAlphaEasing = VIDEO_CARD_ALPHA_EASING,
         returnAlphaEasing = VIDEO_CARD_ALPHA_EASING
@@ -435,8 +449,12 @@ internal fun videoSharedElementBoundsTransformSpec(
     targetBounds: Rect,
     durationMillis: Int = motion.durationMillis
 ): FiniteAnimationSpec<Rect> {
+    val dampingRatio = when (resolveVideoSharedTransitionDirection(initialBounds, targetBounds)) {
+        VideoSharedTransitionDirection.ENTER -> motion.enterSpatialDampingRatio
+        VideoSharedTransitionDirection.RETURN -> motion.returnSpatialDampingRatio
+    }
     return spring(
-        dampingRatio = motion.spatialDampingRatio,
+        dampingRatio = dampingRatio,
         stiffness = resolveVideoSharedTransitionSpatialStiffness(durationMillis)
     )
 }
@@ -446,8 +464,12 @@ internal fun videoMetadataSharedElementBoundsTransformSpec(
     initialBounds: Rect,
     targetBounds: Rect
 ): FiniteAnimationSpec<Rect> {
+    val dampingRatio = when (resolveVideoSharedTransitionDirection(initialBounds, targetBounds)) {
+        VideoSharedTransitionDirection.ENTER -> motion.enterSpatialDampingRatio
+        VideoSharedTransitionDirection.RETURN -> motion.returnSpatialDampingRatio
+    }
     return spring(
-        dampingRatio = motion.spatialDampingRatio,
+        dampingRatio = dampingRatio,
         stiffness = motion.spatialStiffness
     )
 }

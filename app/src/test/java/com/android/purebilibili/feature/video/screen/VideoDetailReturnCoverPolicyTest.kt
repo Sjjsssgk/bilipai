@@ -289,6 +289,19 @@ class VideoDetailReturnCoverPolicyTest {
     }
 
     @Test
+    fun `resident return cover reuses the home card image cache`() {
+        val source = File("src/main/java/com/android/purebilibili/feature/video/screen/VideoDetailScreen.kt")
+            .readText()
+        val requestBlock = source
+            .substringAfter("val residentCoverImageRequest =")
+            .substringBefore("//  播放器容器按当前顶部避让高度计算")
+
+        assertTrue(requestBlock.contains(".crossfade(false)"))
+        assertTrue(requestBlock.contains(".memoryCacheKey(sharedCoverCacheKey)"))
+        assertTrue(requestBlock.contains(".diskCacheKey(sharedCoverCacheKey)"))
+    }
+
+    @Test
     fun `navigation actions do not switch the loaded player to a cover`() {
         val source = File("src/main/java/com/android/purebilibili/feature/video/screen/VideoDetailScreen.kt")
             .readText()

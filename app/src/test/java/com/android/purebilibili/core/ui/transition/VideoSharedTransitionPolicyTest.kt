@@ -36,7 +36,7 @@ class VideoSharedTransitionPolicyTest {
     }
 
     @Test
-    fun videoSharedBoundsUseHeroSpringInBothDirections() {
+    fun videoSharedBoundsUseHeroSpringWithAQuieterReturnLanding() {
         val motion = resolveVideoCardSharedTransitionMotionSpec(
             sourceRoute = "home",
             transitionEnabled = true
@@ -51,8 +51,14 @@ class VideoSharedTransitionPolicyTest {
         assertTrue(returning is SpringSpec<*>)
         assertEquals(0.79f, (enter as SpringSpec<*>).dampingRatio, 0.001f)
         assertEquals(250f, enter.stiffness, 0.001f)
-        assertEquals(enter.dampingRatio, (returning as SpringSpec<*>).dampingRatio, 0.001f)
+        assertEquals(0.86f, (returning as SpringSpec<*>).dampingRatio, 0.001f)
         assertEquals(enter.stiffness, returning.stiffness, 0.001f)
+    }
+
+    @Test
+    fun videoSharedCoverCacheKeyMatchesTheHomeCardIdentity() {
+        assertEquals("cover_BV1ab411_n", resolveVideoSharedCoverCacheKey(" BV1ab411 "))
+        assertEquals("cover_BV1ab411_s", resolveVideoSharedCoverCacheKey("BV1ab411", true))
     }
 
     @Test
@@ -304,7 +310,8 @@ class VideoSharedTransitionPolicyTest {
         assertEquals(240, motion.contentDurationMillis)
         assertEquals(14, motion.contentSlideOffsetDp)
         assertEquals(0.985f, motion.contentInitialScale, 0.0001f)
-        assertEquals(0.79f, motion.spatialDampingRatio, 0.001f)
+        assertEquals(0.79f, motion.enterSpatialDampingRatio, 0.001f)
+        assertEquals(0.86f, motion.returnSpatialDampingRatio, 0.001f)
         assertEquals(250f, motion.spatialStiffness, 0.001f)
         assertSame(motion.enterAlphaEasing, motion.returnAlphaEasing)
         assertTrue(motion.enterAlphaEasing.transform(0.35f) in 0.49f..0.51f)
