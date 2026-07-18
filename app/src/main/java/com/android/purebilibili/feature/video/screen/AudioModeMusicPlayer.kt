@@ -85,7 +85,9 @@ internal fun AudioModeMusicPlayer(
     onEnterPip: () -> Unit,
     sleepTimerMinutes: Int?,
     titleOverride: String?,
-    liquidGlassEffectsEnabled: Boolean
+    liquidGlassEffectsEnabled: Boolean,
+    onToggleOrientation: (() -> Unit)? = null,
+    orientationActionLabel: String = "横屏"
 ) {
     if (successState == null) {
         Box(
@@ -195,6 +197,7 @@ internal fun AudioModeMusicPlayer(
             PlaylistManager.playAt(index)?.let {
                 viewModel.loadVideo(
                     bvid = it.bvid,
+                    cid = it.cid,
                     autoPlay = resolveAudioModePageSwitchAutoPlay()
                 )
             }
@@ -213,6 +216,8 @@ internal fun AudioModeMusicPlayer(
         onSleepTimerClick = { showSleepTimerDialog = true },
         sleepTimerLabel = formatAudioModeSleepTimerButtonLabel(sleepTimerMinutes),
         onPipClick = if (showPipButton) onEnterPip else null,
+        onToggleOrientation = onToggleOrientation,
+        orientationActionLabel = orientationActionLabel,
         isInPipMode = isInPipMode,
         liquidGlassEffectsEnabled = liquidGlassEffectsEnabled
     )

@@ -22,6 +22,7 @@ private const val KEY_SNAPSHOT = "snapshot_json"
 @Serializable
 data class PlaylistItem(
     val bvid: String,
+    val cid: Long = 0L,
     val title: String,
     val cover: String,
     val owner: String,

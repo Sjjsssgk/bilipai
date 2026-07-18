@@ -33,6 +33,7 @@ class AudioModeCollectionPlaylistPolicyTest {
         assertEquals("合集 2", result.items[1].title)
         assertEquals("cover2", result.items[1].cover)
         assertEquals(60L, result.items[1].duration)
+        assertEquals(22L, result.items[1].cid)
     }
 
     @Test
@@ -47,6 +48,25 @@ class AudioModeCollectionPlaylistPolicyTest {
         )
 
         assertNotNull(result)
+        assertEquals(1, result.startIndex)
+    }
+
+    @Test
+    fun `audio mode page playlist keeps cid for same bvid tracks`() {
+        val result = buildAudioModePagePlaylist(
+            pages = listOf(
+                com.android.purebilibili.data.model.response.Page(cid = 11L, part = "第一集"),
+                com.android.purebilibili.data.model.response.Page(cid = 22L, part = "第二集")
+            ),
+            currentBvid = "BV1",
+            currentCid = 22L,
+            videoTitle = "有声书",
+            cover = "cover",
+            owner = "作者"
+        )
+
+        assertNotNull(result)
+        assertEquals(listOf(11L, 22L), result.items.map { it.cid })
         assertEquals(1, result.startIndex)
     }
 

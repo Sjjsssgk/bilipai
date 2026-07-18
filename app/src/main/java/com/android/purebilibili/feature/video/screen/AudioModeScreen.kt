@@ -4,6 +4,8 @@ import android.app.Activity
 import android.app.PictureInPictureParams
 import android.content.Context
 import android.content.ContextWrapper
+import android.content.pm.ActivityInfo
+import android.content.res.Configuration
 import android.os.Build
 import android.util.Rational
 import androidx.compose.foundation.horizontalScroll
@@ -35,6 +37,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -92,6 +95,16 @@ internal fun shouldCreateAudioModeStandalonePlayer(
 internal fun resolveAudioModePageSwitchAutoPlay(): Boolean = true
 
 internal fun resolveAudioModeCollectionSwitchAutoPlay(): Boolean = true
+
+internal fun resolveAudioModeOrientationActionLabel(isLandscape: Boolean): String =
+    if (isLandscape) "竖屏" else "横屏"
+
+internal fun resolveAudioModeRequestedOrientation(isLandscape: Boolean): Int =
+    if (isLandscape) {
+        ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+    } else {
+        ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+    }
 
 internal fun shouldShowAudioModePipButton(sdkInt: Int): Boolean = sdkInt >= Build.VERSION_CODES.O
 
@@ -184,6 +197,19 @@ fun AudioModeScreen(
     val subjectSnapshot by viewModel.subjectSnapshot.collectAsStateWithLifecycle()
     val sleepTimerMinutes by viewModel.sleepTimerMinutes.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val configuration = LocalConfiguration.current
+    val activity = context.findHostActivity()
+    val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+    val orientationActionLabel = resolveAudioModeOrientationActionLabel(isLandscape)
+    DisposableEffect(activity) {
+        val originalOrientation = activity?.requestedOrientation
+            ?: ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+        onDispose {
+            if (activity?.requestedOrientation != originalOrientation) {
+                activity?.requestedOrientation = originalOrientation
+            }
+        }
+    }
     val homeSettings by SettingsManager.getHomeSettings(context).collectAsStateWithLifecycle(
         initialValue = HomeSettings(),
         context = kotlin.coroutines.EmptyCoroutineContext
@@ -264,7 +290,11 @@ fun AudioModeScreen(
         onEnterPip = enterPip,
         sleepTimerMinutes = sleepTimerMinutes,
         titleOverride = titleOverride,
-        liquidGlassEffectsEnabled = homeSettings.androidNativeLiquidGlassEnabled
+        liquidGlassEffectsEnabled = homeSettings.androidNativeLiquidGlassEnabled,
+        onToggleOrientation = {
+            activity?.requestedOrientation = resolveAudioModeRequestedOrientation(isLandscape)
+        },
+        orientationActionLabel = orientationActionLabel
     )
 }
 

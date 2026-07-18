@@ -136,6 +136,8 @@ internal fun MusicPlayerContent(
     onSleepTimerClick: (() -> Unit)? = null,
     sleepTimerLabel: String = "定时关闭",
     onPipClick: (() -> Unit)? = null,
+    onToggleOrientation: (() -> Unit)? = null,
+    orientationActionLabel: String = "横屏",
     isInPipMode: Boolean = false,
     liquidGlassEffectsEnabled: Boolean = false,
     lyricsBlurEffectsEnabled: Boolean = true,
@@ -406,6 +408,12 @@ internal fun MusicPlayerContent(
             }
             onPipClick?.let { action ->
                 MusicActionSheetItem("画中画") {
+                    showActions = false
+                    action()
+                }
+            }
+            onToggleOrientation?.let { action ->
+                MusicActionSheetItem(orientationActionLabel) {
                     showActions = false
                     action()
                 }
