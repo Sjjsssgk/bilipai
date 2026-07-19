@@ -162,6 +162,8 @@ print("[card-transition] platform summary:")
 seen = set()
 for line in text.splitlines():
     stripped = line.strip()
+    if stripped.startswith("Pipeline="):
+        break
     if stripped not in seen and any(key in stripped for key in summary_keys):
         print(" ", stripped)
         seen.add(stripped)
@@ -176,11 +178,11 @@ for line in text.splitlines():
     if not in_profile or not stripped:
         continue
     if stripped.startswith("Flags,"):
-        header = [part.strip() for part in stripped.split(",")]
+        header = [part.strip() for part in stripped.split(",") if part.strip()]
         continue
     if header is None or not stripped[0].isdigit():
         continue
-    parts = [part.strip() for part in stripped.split(",")]
+    parts = [part.strip() for part in stripped.split(",") if part.strip()]
     if len(parts) != len(header): continue
     try:
         row = dict(zip(header, map(int, parts)))
@@ -189,8 +191,12 @@ for line in text.splitlines():
     intended = row.get("IntendedVsync", 0)
     completed = row.get("FrameCompleted", 0)
     interval = row.get("FrameInterval", 0)
-    if row.get("Flags", 1) == 0 and intended > 0 and completed >= intended and interval > 0:
-        frames.append((intended, completed, interval))
+    workload_target = row.get("WorkloadTarget", interval)
+    flags = row.get("Flags", 0)
+    # AOSP 仅用 bit 3 标记 SkippedFrame；部分 Android 16 厂商 ROM 会附加 bit 5。
+    if not flags & 8 and intended > 0 and completed >= intended and interval > 0:
+        budget = workload_target if workload_target > 0 else interval
+        frames.append((intended, completed, interval, budget, flags))
 
 if frames:
     # 同一 IntendedVsync 只保留完成最晚的一行，避免多渲染节点虚高 FPS。
@@ -199,10 +205,11 @@ if frames:
         if frame[0] not in by_vsync or frame[1] > by_vsync[frame[0]][1]:
             by_vsync[frame[0]] = frame
     frames = sorted(by_vsync.values())
-    durations_ms = [(completed - intended) / 1_000_000 for intended, completed, _ in frames]
-    interval_ns = int(statistics.median(interval for _, _, interval in frames))
-    budget_ms = interval_ns / 1_000_000
-    intended_times = [intended for intended, _, _ in frames]
+    durations_ms = [(frame[1] - frame[0]) / 1_000_000 for frame in frames]
+    budgets_ms = [frame[3] / 1_000_000 for frame in frames]
+    interval_ns = int(statistics.median(frame[2] for frame in frames))
+    budget_ms = statistics.median(budgets_ms)
+    intended_times = [frame[0] for frame in frames]
     active_deltas = [
         later - earlier
         for earlier, later in zip(intended_times, intended_times[1:])
@@ -214,21 +221,22 @@ if frames:
         ordered = sorted(values)
         return ordered[max(0, math.ceil(len(ordered) * fraction) - 1)]
 
-    over_budget = sum(duration > budget_ms for duration in durations_ms)
-    over_two_budgets = sum(duration > budget_ms * 2 for duration in durations_ms)
+    over_budget = sum(duration > budget for duration, budget in zip(durations_ms, budgets_ms))
+    over_two_budgets = sum(duration > budget * 2 for duration, budget in zip(durations_ms, budgets_ms))
     fps_text = f"{active_fps:.1f}" if math.isfinite(active_fps) else "N/A"
-    print("[card-transition] framestats:")
-    print(f"  valid_frames={len(frames)} target_refresh≈{1_000_000_000 / interval_ns:.1f}Hz active_render_rate≈{fps_text}fps")
+    flag_text = ",".join(map(str, sorted({frame[4] for frame in frames})))
+    print("[card-transition] recent framestats (up to 120 frames):")
+    print(f"  valid_frames={len(frames)} flags={flag_text} target_refresh≈{1_000_000_000 / interval_ns:.1f}Hz active_render_rate≈{fps_text}fps")
     print(
-        "  app_frame_time="
+        "  frame_completion_latency="
         f"p50 {percentile(durations_ms, .50):.2f}ms / "
         f"p90 {percentile(durations_ms, .90):.2f}ms / "
         f"p95 {percentile(durations_ms, .95):.2f}ms / "
         f"p99 {percentile(durations_ms, .99):.2f}ms"
     )
     print(
-        f"  over_{budget_ms:.2f}ms={over_budget} ({over_budget / len(frames) * 100:.2f}%) "
-        f"over_{budget_ms * 2:.2f}ms={over_two_budgets} ({over_two_budgets / len(frames) * 100:.2f}%)"
+        f"  over_original_budget≈{budget_ms:.2f}ms: {over_budget} ({over_budget / len(frames) * 100:.2f}%) "
+        f"over_2x_budget: {over_two_budgets} ({over_two_budgets / len(frames) * 100:.2f}%)"
     )
 else:
     print("[card-transition] framestats: no valid PROFILEDATA rows")
